@@ -54,24 +54,6 @@ class GRASS:
         self.gsetup.init(self.gisbase,
                          self.grassdata, location, mapset)
 
-    # def create_location(self, geofile, drop_location=True):
-        # """
-        # Create and activate new grass location using geofile.
-        # :param geofile:     path to raster file
-        # :param drop_location: Delete location if True(drop_location and the location exists)
-        # """
-        # # import ipdb; ipdb.set_trace()
-        # path = os.path.join(self.grassdata, self.location)
-#
-        # if os.path.exists(path) and drop_location:
-            # shutil.rmtree(path)
-#
-        # cmd = '%s -text -e -c %s %s' % (self.gisexec, geofile, path)
-#
-        # exitcode = os.system(cmd)
-        # if exitcode != 0 and drop_location:
-            # raise GrassRuntimeError("The command: %s. returns non-zero exit code" % (cmd, ))
-
     def create_location_by_epsg(self, epsg_code, drop_location=True):
         """
         Create location using EPSG code
@@ -92,6 +74,52 @@ class GRASS:
                 raise GrassRuntimeError("The command: %s. returns non-zero exit code" % (cmd, ))
             else:
                 raise GrassRuntimeError("The location %s exists" % (self.location, ))
+
+    def import_geofile(self, filename, mapname, type, overwrite=False):
+        """
+        Import geofile into current MAPSET. Reproject the geofile before impporting.
+        
+        :param filename: Name of geofile
+        :param mapname:  Name of new map. 
+        :param type:    Type of geofile ('rast' or 'vect')
+        :param overwrite:  Overwrite, if map exists.
+        """
+
+        if type == 'rast':
+            import_command = 'r.in.gdal'
+            import_flags = 'c'
+            reproj_command = 'r.proj'
+        elif type == 'vect':
+            import_command = 'v.in.ogr'
+            import_flags = 'i'
+            reproj_command = 'v.proj'
+        else:
+            raise GrassRuntimeError('Geofile type "%s" is not supported.' % (type, ))
+
+        temp_location_name = uuid.uuid4().hex
+        try:
+            # create new location, import data, reproj, delete created location
+            self.grass.run_command(
+                import_command,
+                input=filename, output=mapname,
+                location=temp_location_name,
+                flags=import_flags
+            )
+            self.grass.run_command('g.mapset', mapset='PERMANENT', location=temp_location_name)
+            self.grass.run_command(
+                import_command,
+                input=filename, output=mapname
+            )
+            self.grass.run_command('g.mapset', mapset='PERMANENT', location=self.location)
+            self.grass.run_command(
+                reproj_command,
+                location=temp_location_name,
+                input=mapname, output=mapname,
+                overwrite=overwrite
+            )
+        finally:
+            location_path = os.path.join(self.grassdata, temp_location_name)
+            shutil.rmtree(location_path)
 
     def get_region_info(self):
         gregion = self.grass.region()

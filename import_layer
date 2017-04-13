@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import uuid
+
+import argparse
+
+from grasslib.configurator import Params
+from grasslib.grasslib import GRASS
+
+DEFAULT_CONFIG_NAME = 'logg_ranging.conf'
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Import layer into GIS database.')
+
+    parser.add_argument(
+        '--config',
+        dest='config',
+        action='store',
+        # const=DEFAULT_CONFIG_NAME,
+        default=DEFAULT_CONFIG_NAME,
+        help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
+    )
+    parser.add_argument(
+        '--input',
+        dest='input',
+        action='store',
+        required=True,
+        help='Input data file (*tiff or *gejson)'
+    )
+    parser.add_argument(
+        '--output',
+        dest='output',
+        action='store',
+        required=True,
+        help='Output layer name'
+    )
+    parser.add_argument(
+        '--overwrite',
+        dest='overwrite',
+        action='store_const',
+        # choices=[True, False],
+        const=True,
+        default=False,
+        help='Overwrite existing layer (True or False).'
+    )
+    args = parser.parse_args()
+
+    return args
+
+
+def input_name_is_vector_file(name):
+    '''Return True if input filename is GeoJson'''
+    return name.lower()[-7:] == 'geojson'
+
+
+def input_name_is_raster_file(name):
+    '''Return True if input filename is GeoTiff'''
+    if name.lower()[-4:] == 'tiff':
+        return True
+    if name.lower()[-3:] == 'tif':
+        return True
+    return False
+
+
+def main():
+    args = parse_args()
+    args = vars(args)
+    print args
+
+    input_file = args['input']
+    if not (input_name_is_raster_file(input_file) or input_name_is_vector_file(input_file)):
+        raise RuntimeError('Unknown file name type. Use *tiff or *geojson filename.')
+
+    output = args['output']
+    overwrite = args['overwrite']
+
+    config = args['config']
+    config_params = Params(config)
+
+    grass_lib = config_params.grass_lib
+    grass_exec = config_params.grass_exec
+
+    location = config_params.location
+    dbase = config_params.grassdata
+
+    grs = GRASS(
+        gisexec=grass_exec,
+        gisbase=grass_lib,
+        grassdata=dbase,
+        location=location,
+        init_loc=True
+    )
+
+    if input_name_is_vector_file(input_file):
+        grs.import_geofile(input_file, output, type='vect', overwrite=overwrite)
+    if input_name_is_raster_file(input_file):
+        grs.import_geofile(input_file, output, type='rast', overwrite=overwrite)
+
+
+if __name__ == '__main__':
+    main()
+
