@@ -1,2 +1,11 @@
 
 Project for training and using GIS models.
+
+
+To run tests:
+
+```
+cd grasslib
+python -m tests/test_grasslib
+
+```
