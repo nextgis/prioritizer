@@ -15,15 +15,14 @@ import unittest
 from grasslib import GRASS
 from grasslib import GrassRuntimeError
 
+from configurator import Params
+params = Params('test_config.conf')
 
-TEMPDIR = tempfile.gettempdir()
+GRASS_LIB = params.grass_lib
+GRASS_EXEC = params.grass_exec
 
-TEST_GISDB_NAME = uuid.uuid4().hex
 TEST_LOCATION = uuid.uuid4().hex
-DBASE = os.path.join(TEMPDIR, TEST_GISDB_NAME)
-
-GRASS_LIB = '/usr/lib/grass70'
-GRASS_EXEC = '/usr/bin/grass'
+DBASE = params.grassdata
 
 
 class TestGRASS(unittest.TestCase):

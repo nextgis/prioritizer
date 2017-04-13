@@ -39,7 +39,6 @@ class GRASS:
         self.grass = grass
         self.gsetup = gsetup
 
-        # Импортируем полезные модули
         import grass.script.array as garray
         import grass.pygrass.raster as grs_raster
 
