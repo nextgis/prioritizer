@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import argparse
+
+from grasslib.configurator import Params
+from grasslib.grasslib import GRASS
+
+DEFAULT_CONFIG_NAME = 'logg_ranging.conf'
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+
+    parser.add_argument(
+        '--config',
+        dest='config',
+        action='store',
+        # const=DEFAULT_CONFIG_NAME,
+        default=DEFAULT_CONFIG_NAME,
+        help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
+    )
+    parser.add_argument(
+        '--type',
+        dest='type',
+        action='store',
+        choices = ['rast', 'vect'],
+        required=True,
+        help='Type of layer (rast/vect).'
+    )
+    parser.add_argument(
+        '--name',
+        dest='name',
+        action='store',
+        required=True,
+        help='Name of the layer.'
+    )
+    args = parser.parse_args()
+
+    return args
+
+
+def main():
+    args = parse_args()
+    args = vars(args)
+
+    type = args['type']
+    name = args['name']
+
+    config = args['config']
+    config_params = Params(config)
+
+    grass_lib = config_params.grass_lib
+    grass_exec = config_params.grass_exec
+
+    location = config_params.location
+    dbase = config_params.grassdata
+
+    grs = GRASS(
+        gisexec=grass_exec,
+        gisbase=grass_lib,
+        grassdata=dbase,
+        location=location,
+        init_loc=True
+    )
+
+    grs.grass.run_command('g.remove', type=type, name=name, flags='f')
+
+
+if __name__ == '__main__':
+    main()
+
