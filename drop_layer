@@ -6,8 +6,7 @@ import argparse
 from grasslib.configurator import Params
 from grasslib.grasslib import GRASS
 
-DEFAULT_CONFIG_NAME = 'logg_ranging.conf'
-
+from defaults import DEFAULT_CONFIG_NAME
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Create Database for logging ranging.')

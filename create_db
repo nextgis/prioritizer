@@ -6,7 +6,7 @@ import argparse
 from grasslib.configurator import Params
 from grasslib.grasslib import GRASS
 
-DEFAULT_CONFIG_NAME = 'logg_ranging'
+from defaults import DEFAULT_CONFIG_NAME
 
 
 def parse_args():
