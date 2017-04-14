@@ -27,6 +27,9 @@ DBASE = params.grassdata
 
 class TestGRASS(unittest.TestCase):
 
+    def tearDown(self):
+        shutil.rmtree(DBASE, ignore_errors=True)
+
     def test_init(self):
         grs = GRASS(
             gisexec=GRASS_EXEC,
@@ -52,16 +55,13 @@ class TestGRASS(unittest.TestCase):
 
         mapset = 'PERMANENT'
         dirname = os.path.join(DBASE, TEST_LOCATION, mapset)
-        try:
-            grs.create_location_by_epsg(epsg_code=4326)
-            self.assertTrue(os.path.isdir(dirname))
+        grs.create_location_by_epsg(epsg_code=4326)
+        self.assertTrue(os.path.isdir(dirname))
 
-            self.assertRaises(
-                GrassRuntimeError,
-                grs.create_location_by_epsg, epsg_code=4326, drop_location=False
-            )
-        finally:
-            shutil.rmtree(DBASE)
+        self.assertRaises(
+            GrassRuntimeError,
+            grs.create_location_by_epsg, epsg_code=4326, drop_location=False
+        )
 
     def test_init_location(self):
         grs = GRASS(
@@ -70,16 +70,28 @@ class TestGRASS(unittest.TestCase):
             grassdata=DBASE,
             location=TEST_LOCATION
         )
-        try:
-            grs.create_location_by_epsg(epsg_code=4326)
+        grs.create_location_by_epsg(epsg_code=4326)
 
-            grs.init_location_vars(grs.location, grs.mapset)
-            region = grs.grass.region()
-        finally:
-            shutil.rmtree(DBASE)
+        grs.init_location_vars(grs.location, grs.mapset)
+        region = grs.grass.region()
 
         self.assertTrue(region.has_key('rows'))
         self.assertTrue(region.has_key('cols'))
+
+    def test_import_geofile(self):
+        grs = GRASS(
+            gisexec=GRASS_EXEC,
+            gisbase=GRASS_LIB,
+            grassdata=DBASE,
+            location=TEST_LOCATION,
+            init_loc=False
+        )
+        grs.create_location_by_epsg(epsg_code=32653)
+        grs.init_location_vars(grs.location, grs.mapset)
+
+        grs.import_geofile('test3857.geojson', 'test', 'vect')
+        info = grs.grass.read_command('v.info', map='test')
+
 
 if __name__ == '__main__':
     suite = unittest.makeSuite(TestGRASS, 'test')

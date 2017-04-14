@@ -105,6 +105,7 @@ class GRASS:
                 location=temp_location_name,
                 flags=import_flags
             )
+
             self.grass.run_command('g.mapset', mapset='PERMANENT', location=temp_location_name)
             self.grass.run_command(
                 import_command,
