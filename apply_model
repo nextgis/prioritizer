@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+
+import argparse
+
+import pickle
+
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+
+from grasslib.configurator import Params
+from grasslib.grasslib import GRASS
+
+from defaults import DEFAULT_CONFIG_NAME
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+
+    parser.add_argument(
+        '--model',
+        dest='model',
+        action='store',
+        required=True,
+        help='Name of result raster.'
+    )
+    parser.add_argument(
+        '--result',
+        dest='result',
+        action='store',
+        default='-',
+        help='Name of result file to store model.'
+    )
+    parser.add_argument(
+        '--data',
+        dest='data',
+        action='store',
+        required=True,
+        help='Name of data file.'
+    )
+    parser.add_argument(
+        '--overwrite',
+        dest='overwrite',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Overwrite existing result file (True or False).'
+    )
+    args = parser.parse_args()
+
+    return args
+
+
+def predict_probas(model, X):
+    probas = model.predict_proba(X)
+    # probas is numpy array somethink like:
+    #           p(y==0) ,    p(y==1)
+    # array([[0.50226361, 0.49773639],
+           # [0.94820054, 0.05179946],
+           # [0.34371554, 0.65628446]])
+
+    return probas[:, 1]
+
+def main():
+    args = parse_args()
+    args = vars(args)
+
+    overwrite = args['overwrite']
+    result = args['result']
+    data = args['data']
+    model_file = args['model']
+
+    X = np.loadtxt(data, delimiter=',')
+
+    if os.path.isfile(result) and not overwrite:
+        sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
+
+    model = pickle.load(open(model_file, 'rb'))
+    probas = [str(p) for p in predict_probas(model, X)]
+    probas = '\n'.join(probas)
+
+    if result == '-':
+        print probas
+    else:
+        res_file = open(result, 'w')
+        res_file.write(probas)
+
+
+if __name__ == '__main__':
+    main()
+
