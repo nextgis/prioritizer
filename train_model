@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+
+import argparse
+
+import pickle
+
+from sklearn.linear_model import LogisticRegression
+
+from grasslib.configurator import Params
+from grasslib.grasslib import GRASS
+
+from defaults import DEFAULT_CONFIG_NAME
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+
+    parser.add_argument(
+        '--config',
+        dest='config',
+        action='store',
+        default=DEFAULT_CONFIG_NAME,
+        help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
+    )
+    parser.add_argument(
+        '--x',
+        dest='x',
+        action='store',
+        required=True,
+        help='List of factor rasters (comma-separated: raster1,raster2,...)'
+    )
+    parser.add_argument(
+        '--y',
+        dest='y',
+        action='store',
+        required=True,
+        help='Name of result raster.'
+    )
+    parser.add_argument(
+        '--result',
+        dest='result',
+        action='store',
+        required=True,
+        help='Name of result file to store model.'
+    )
+    parser.add_argument(
+        '--human',
+        dest='human',
+        action='store',
+        help='Name of human-readable resume file.'
+    )
+    parser.add_argument(
+        '--overwrite',
+        dest='overwrite',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Overwrite existing result file (True or False).'
+    )
+    args = parser.parse_args()
+
+    return args
+
+
+def train(X, y):
+    logistic = LogisticRegression(class_weight="balanced")
+    logistic.fit(X, y)
+
+    return logistic
+
+def main():
+    args = parse_args()
+    args = vars(args)
+
+    overwrite = args['overwrite']
+    x = args['x'].split(',')
+    y = args['y']
+    result = args['result']
+    human = args['human']
+
+    config = args['config']
+    config_params = Params(config)
+
+    grass_lib = config_params.grass_lib
+    grass_exec = config_params.grass_exec
+
+    location = config_params.location
+    dbase = config_params.grassdata
+
+    grs = GRASS(
+        gisexec=grass_exec,
+        gisbase=grass_lib,
+        grassdata=dbase,
+        location=location,
+        init_loc=True
+    )
+    X = grs.rasters_to_array(x)
+    Y = grs.raster_to_array(y)
+
+    if os.path.isfile(result) and not overwrite:
+        sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
+
+    if (human is not None) and os.path.isfile(human) and not overwrite:
+        sys.exit("File %s exists. Use --overwrite flag or other filename." % (human, ))
+
+    result_model = train(X, Y)
+    pickle.dump(result_model, open(result, 'wb'), protocol=2)
+
+
+if __name__ == '__main__':
+    main()
+

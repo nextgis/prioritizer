@@ -137,9 +137,12 @@ class GRASS:
     def raster_to_array(self, map_name):
         """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
         """
-                
         arr = self.garray.array()
         arr.read(map_name)
+
+        # Drop info about GRASS raster
+        # it allows to pikle and unpicke data without grass.script modules
+        arr = np.array(arr)
             
         return np.reshape(arr, -1)
     
