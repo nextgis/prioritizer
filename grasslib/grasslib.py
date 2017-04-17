@@ -89,10 +89,12 @@ class GRASS:
             import_command = 'r.in.gdal'
             import_flags = 'c'
             reproj_command = 'r.proj'
+            reproj_flags = 'n'
         elif type == 'vect':
             import_command = 'v.in.ogr'
             import_flags = 'i'
             reproj_command = 'v.proj'
+            reproj_flags = None
         else:
             raise GrassRuntimeError('Geofile type "%s" is not supported.' % (type, ))
 
@@ -116,6 +118,7 @@ class GRASS:
                 reproj_command,
                 location=temp_location_name,
                 input=mapname, output=mapname,
+                flags=reproj_flags,
                 overwrite=overwrite
             )
         finally:
