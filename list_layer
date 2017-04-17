@@ -10,7 +10,7 @@ from defaults import DEFAULT_CONFIG_NAME
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+    parser = argparse.ArgumentParser(description='List layers from database.')
 
     parser.add_argument(
         '--config',

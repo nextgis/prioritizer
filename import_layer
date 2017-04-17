@@ -67,7 +67,6 @@ def input_name_is_raster_file(name):
 def main():
     args = parse_args()
     args = vars(args)
-    print args
 
     input_file = args['input']
     if not (input_name_is_raster_file(input_file) or input_name_is_vector_file(input_file)):
