@@ -1,6 +1,21 @@
 
 Project for training and using GIS models.
 
+Workflow example:
+```
+ export LD_LIBRARY_PATH=/usr/lib/grass70/lib
+
+ create_db 
+
+ import_layer --input=road_dist.tif --output=road_dist
+ import_layer --input=vydela_dist.tif --output=vydela_dist
+ import_layer --input=logg_comb.tif --output=logg_comb
+
+ train_model --x=road_dist,vydela_dist --y=logg_comb --result=my.model.pkl
+
+ apply_model --data=tmp.txt --model=my.model.pkl
+```
+
 
 To run tests:
 
@@ -9,3 +24,5 @@ cd grasslib
 python -m tests/test_grasslib
 
 ```
+
+
