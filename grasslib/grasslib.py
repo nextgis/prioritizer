@@ -89,7 +89,12 @@ class GRASS:
             import_command = 'r.in.gdal'
             import_flags = 'c'
             reproj_command = 'r.proj'
-            reproj_flags = 'n'
+            # flag -n allows reprojection of data that isn't insise current region
+            # but if we'll change regions in runtime, then we'll make a lot of potential troubles
+            # so we'll use region from config file.
+
+            # reproj_flags = 'n'  # Don't use -n (==raise an exception if data isn't inside region)
+            reproj_flags = None
         elif type == 'vect':
             import_command = 'v.in.ogr'
             import_flags = 'i'

@@ -47,6 +47,16 @@ def main():
     )
 
     grs.create_location_by_epsg(epsg_code=epsg)
+    grs.init_location_vars(grs.location, grs.mapset)
+    grs.grass.run_command(
+        'g.region',
+        n = config_params.north,
+        s = config_params.south,
+        w = config_params.west,
+        e = config_params.east,
+        res = config_params.resolution,
+        flags='s'
+    )
 
 
 if __name__ == '__main__':

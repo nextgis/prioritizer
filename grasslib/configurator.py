@@ -14,3 +14,9 @@ class Params:
         self.location = self.config.get('DATABASE', 'location')
         self.epsg = self.config.get('DATABASE', 'epsg')
 
+        self.north = self.config.get('DATABASE', 'north')
+        self.south = self.config.get('DATABASE', 'south')
+        self.west = self.config.get('DATABASE', 'west')
+        self.east = self.config.get('DATABASE', 'east')
+        self.resolution = self.config.get('DATABASE', 'resolution')
+
