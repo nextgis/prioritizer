@@ -89,8 +89,29 @@ class TestGRASS(unittest.TestCase):
         grs.create_location_by_epsg(epsg_code=32653)
         grs.init_location_vars(grs.location, grs.mapset)
 
-        grs.import_geofile('test3857.geojson', 'test', 'vect')
-        info = grs.grass.read_command('v.info', map='test')
+        # grs.import_geofile('test3857.geojson', 'test', 'vect')
+        # info = grs.grass.read_command('v.info', map='test')
+
+        # REGION isn't defined yet
+        self.assertRaises(
+            Exception,
+            grs.import_geofile,
+            'test_rast.tif', 'test', 'rast'
+        )
+        # Define region
+        grs.grass.run_command(
+            'g.region',
+            n=params.north,
+            s=params.south,
+            w=params.west,
+            e=params.east,
+            res=params.resolution,
+            flags='s'
+        )
+        grs.import_geofile('test_rast.tif', 'test', 'rast')
+
+        print "WARNING!!! Vector import isn't tested!"
+
 
 
 if __name__ == '__main__':
