@@ -98,7 +98,7 @@ class TestGRASS(unittest.TestCase):
         self.assertRaises(
             Exception,
             grs.import_geofile,
-            'test_rast.tif', 'test', 'rast'
+            'prioretizer/tests/test_rast.tif', 'test', 'rast'
         )
         # Define region
         grs.grass.run_command(
@@ -110,7 +110,7 @@ class TestGRASS(unittest.TestCase):
             res=params.resolution,
             flags='s'
         )
-        grs.import_geofile('test_rast.tif', 'test', 'rast')
+        grs.import_geofile('prioretizer/tests/test_rast.tif', 'test', 'rast')
 
         print "WARNING!!! Vector import isn't tested!"
 
