@@ -11,10 +11,10 @@ import pickle
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
-from grasslib.configurator import Params
-from grasslib.grasslib import GRASS
+from prioretizer.grasslib.configurator import Params
+from prioretizer.grasslib.grasslib import GRASS
 
-from defaults import DEFAULT_CONFIG_NAME
+from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 
 def parse_args():

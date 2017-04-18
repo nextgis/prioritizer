@@ -12,11 +12,13 @@ import tempfile
 
 import unittest
 
-from grasslib import GRASS
-from grasslib import GrassRuntimeError
 
-from configurator import Params
-params = Params('test_config.conf')
+from ..grasslib.grasslib import GRASS
+from ..grasslib.grasslib import GrassRuntimeError
+
+from ..grasslib.configurator import Params
+
+params = Params('prioretizer/tests/test_config.conf')
 
 GRASS_LIB = params.grass_lib
 GRASS_EXEC = params.grass_exec

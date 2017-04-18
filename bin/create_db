@@ -3,13 +3,14 @@
 
 import argparse
 
-from grasslib.configurator import Params
-from grasslib.grasslib import GRASS
+from prioretizer.grasslib.configurator import Params
+from prioretizer.grasslib.grasslib import GRASS
 
-from defaults import DEFAULT_CONFIG_NAME
+from prioretizer.defaults import DEFAULT_CONFIG_NAME
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Delete layer from database.')
+    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
 
     parser.add_argument(
         '--config',
@@ -19,21 +20,6 @@ def parse_args():
         default=DEFAULT_CONFIG_NAME,
         help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
     )
-    parser.add_argument(
-        '--type',
-        dest='type',
-        action='store',
-        choices = ['rast', 'vect'],
-        required=True,
-        help='Type of layer (rast/vect).'
-    )
-    parser.add_argument(
-        '--name',
-        dest='name',
-        action='store',
-        required=True,
-        help='Name of the layer.'
-    )
     args = parser.parse_args()
 
     return args
@@ -42,10 +28,6 @@ def parse_args():
 def main():
     args = parse_args()
     args = vars(args)
-
-    type = args['type']
-    name = args['name']
-
     config = args['config']
     config_params = Params(config)
 
@@ -55,15 +37,26 @@ def main():
     location = config_params.location
     dbase = config_params.grassdata
 
+    epsg = config_params.epsg
+
     grs = GRASS(
         gisexec=grass_exec,
         gisbase=grass_lib,
         grassdata=dbase,
         location=location,
-        init_loc=True
     )
 
-    grs.grass.run_command('g.remove', type=type, name=name, flags='f')
+    grs.create_location_by_epsg(epsg_code=epsg)
+    grs.init_location_vars(grs.location, grs.mapset)
+    grs.grass.run_command(
+        'g.region',
+        n = config_params.north,
+        s = config_params.south,
+        w = config_params.west,
+        e = config_params.east,
+        res = config_params.resolution,
+        flags='s'
+    )
 
 
 if __name__ == '__main__':

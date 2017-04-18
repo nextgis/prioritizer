@@ -3,14 +3,13 @@
 
 import argparse
 
-from grasslib.configurator import Params
-from grasslib.grasslib import GRASS
+from prioretizer.grasslib.configurator import Params
+from prioretizer.grasslib.grasslib import GRASS
 
-from defaults import DEFAULT_CONFIG_NAME
-
+from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='List layers from database.')
+    parser = argparse.ArgumentParser(description='Delete layer from database.')
 
     parser.add_argument(
         '--config',
@@ -29,11 +28,11 @@ def parse_args():
         help='Type of layer (rast/vect).'
     )
     parser.add_argument(
-        '--pattern',
-        dest='pattern',
+        '--name',
+        dest='name',
         action='store',
         required=True,
-        help='Pattern of layer name.'
+        help='Name of the layer.'
     )
     args = parser.parse_args()
 
@@ -45,7 +44,7 @@ def main():
     args = vars(args)
 
     type = args['type']
-    pattern = args['pattern']
+    name = args['name']
 
     config = args['config']
     config_params = Params(config)
@@ -64,8 +63,7 @@ def main():
         init_loc=True
     )
 
-    maps = grs.grass.list_strings(type, pattern=pattern)
-    print '\n'.join(maps)
+    grs.grass.run_command('g.remove', type=type, name=name, flags='f')
 
 
 if __name__ == '__main__':

@@ -3,14 +3,14 @@
 
 import argparse
 
-from grasslib.configurator import Params
-from grasslib.grasslib import GRASS
+from prioretizer.grasslib.configurator import Params
+from prioretizer.grasslib.grasslib import GRASS
 
-from defaults import DEFAULT_CONFIG_NAME
+from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+    parser = argparse.ArgumentParser(description='List layers from database.')
 
     parser.add_argument(
         '--config',
@@ -20,6 +20,21 @@ def parse_args():
         default=DEFAULT_CONFIG_NAME,
         help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
     )
+    parser.add_argument(
+        '--type',
+        dest='type',
+        action='store',
+        choices = ['rast', 'vect'],
+        required=True,
+        help='Type of layer (rast/vect).'
+    )
+    parser.add_argument(
+        '--pattern',
+        dest='pattern',
+        action='store',
+        required=True,
+        help='Pattern of layer name.'
+    )
     args = parser.parse_args()
 
     return args
@@ -28,6 +43,10 @@ def parse_args():
 def main():
     args = parse_args()
     args = vars(args)
+
+    type = args['type']
+    pattern = args['pattern']
+
     config = args['config']
     config_params = Params(config)
 
@@ -37,26 +56,16 @@ def main():
     location = config_params.location
     dbase = config_params.grassdata
 
-    epsg = config_params.epsg
-
     grs = GRASS(
         gisexec=grass_exec,
         gisbase=grass_lib,
         grassdata=dbase,
         location=location,
+        init_loc=True
     )
 
-    grs.create_location_by_epsg(epsg_code=epsg)
-    grs.init_location_vars(grs.location, grs.mapset)
-    grs.grass.run_command(
-        'g.region',
-        n = config_params.north,
-        s = config_params.south,
-        w = config_params.west,
-        e = config_params.east,
-        res = config_params.resolution,
-        flags='s'
-    )
+    maps = grs.grass.list_strings(type, pattern=pattern)
+    print '\n'.join(maps)
 
 
 if __name__ == '__main__':
