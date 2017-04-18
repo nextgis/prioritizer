@@ -72,6 +72,20 @@ def train(X, y):
 
     return logistic
 
+def describe(model):
+    params = dict(
+        coefs = model.coef_,
+        intercept = model.intercept_
+    )
+
+    description = """
+    MODEL: Weighted Logistic Regresion,
+    coefs: %(coefs)s,
+    intercept: %(intercept)s
+    """ % params
+
+    return description
+
 def main():
     args = parse_args()
     args = vars(args)
@@ -109,6 +123,10 @@ def main():
 
     result_model = train(X, Y)
     pickle.dump(result_model, open(result, 'wb'), protocol=2)
+
+    if human is not None:
+        human_file = open(human, 'w')
+        human_file.write(describe(result_model))
 
 
 if __name__ == '__main__':
