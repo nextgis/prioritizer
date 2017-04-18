@@ -1,28 +1,117 @@
 
 Project for training and using GIS models.
+==========================================
+
+Install Dependencies:
+====================
+
+Install pip:
+
+```
+sudo apt-get install python-pip
+```
+
+Install packages:
+
+```
+sudo pip install numpy
+sudo pip install scipy
+sudo pip install sklearn
+```
+
+
+Install GRASS GIS (7.x version is required):
+```
+sudo apt-get install grass
+```
+
+Install the utilities:
+======================
+
+1. Unpack distro in a directory.
+2. Configuration.
+ a. Fix paths in test configuration (see prioritizer/prioretizer/tests/test_config.conf) ```grass_lib``` and ```grass_exec``` parameters:
+ ```grass_exec``` is the path to GRASS GIS binary, you can find it using the command:
+```
+whereis grass
+```
+grass_lib is the path to installed GRASS GIS library, you can find in using the command:
+```
+grass --config path
+```
+Update the parameters.
+ b. (Optional) update database parameters:
+    path to database directory (```grassdata``` parameter), projection code (```epsg```), BBOX of area of interest (```north```, ... parameters).
+3. Setup LD_LIBRARY_PATH variable according ```grass_lib``` parameter: LD_LIBRARY_PATH=$grass_lib/lib.
+For example if ```grass_lib``` is ```/usr/lib/grass72/``` then set LD_LIBRARY_PATH variable in terminal:
+```
+export LD_LIBRARY_PATH=/usr/lib/grass72/lib
+```
+4. Run tests:
+```
+cd prioritizer
+python setup.py test
+```
+Some testing information will appear. You can ignore warnings and error messages lile 'ERROR: Input raster map is outside current region' or 'ERROR: Failed to create new location. The location <...> already exists.'
+They appear because of intentional raising exceptions in testing code. The important message is the last one. If you see some like that:
+```
+----------------------------------------------------------------------
+Ran 4 tests in 17.302s
+
+OK
+```
+Then tests run properly. But the last message like
+```
+----------------------------------------------------------------------
+Ran 4 tests in 0.697s
+
+FAILED (errors=1)
+Test failed: <unittest.runner.TextTestResult run=4 errors=1 failures=0>
+error: Test failed: <unittest.runner.TextTestResult run=4 errors=1 failures=0>
+```
+indicates an error in the code.
+5. Installation. Install the utilities:
+```
+sudo pip install -e .
+```
+relogin or open new terminal and try to run an utilite:
+```
+create_db --help
+```
+The help mesage should be printed:
+```
+usage: create_db [-h] [--config CONFIG]
+
+Create Database for logging ranging.
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --config CONFIG  Config file (default: logg_ranging.conf)
+```
+
+
 
 Workflow example:
-```
- export LD_LIBRARY_PATH=/usr/lib/grass70/lib
-
- create_db 
-
- import_layer --input=road_dist.tif --output=road_dist
- import_layer --input=vydela_dist.tif --output=vydela_dist
- import_layer --input=logg_comb.tif --output=logg_comb
-
- train_model --x=road_dist,vydela_dist --y=logg_comb --result=my.model.pkl
-
- apply_model --data=tmp.txt --model=my.model.pkl
-```
-
-
-To run tests:
+=================
 
 ```
-cd grasslib
-python -m tests/test_grasslib
+# Setup enviromental variable
+export LD_LIBRARY_PATH=/usr/lib/grass70/lib
 
+# Create new database
+create_db
+
+# Import data
+import_layer --input=road_dist.tif --output=road_dist
+import_layer --input=vydela_dist.tif --output=vydela_dist
+import_layer --input=logg_comb.tif --output=logg_comb
+
+# Train model
+train_model --x=road_dist,vydela_dist --y=logg_comb --result=my.model.pkl
+
+# Print result
+apply_model --data=tmp.txt --model=my.model.pkl
 ```
+
 
 
