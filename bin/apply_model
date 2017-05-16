@@ -77,11 +77,13 @@ def main():
         data = sys.stdin
 
     X = np.loadtxt(data, delimiter=',')
+    if len(X.shape) == 1:
+        X = X.reshape(1, -1)
 
     if os.path.isfile(result) and not overwrite:
         sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
 
-    model= pickle.load(open(model_file, 'rb'))
+    model = pickle.load(open(model_file, 'rb'))
     probas = [str(p) for p in predict_probas(model, X)]
     probas = '\n'.join(probas)
 
