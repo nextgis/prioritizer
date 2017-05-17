@@ -84,7 +84,9 @@ def main():
         sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
 
     model, scaler = pickle.load(open(model_file, 'rb'))
-    probas = [str(p) for p in predict_probas(model, X)]
+    X_std = scaler.transform(X)
+
+    probas = [str(p) for p in predict_probas(model, X_std)]
     probas = '\n'.join(probas)
 
     if result == '-':
