@@ -8,7 +8,19 @@ import argparse
 
 import pickle
 
+import  numpy as np
+
+# from scipy.stats import randint as sp_randint
+from scipy.stats import uniform
+
 from sklearn.linear_model import LogisticRegression
+
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
+
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.metrics import confusion_matrix
 
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
@@ -65,12 +77,40 @@ def parse_args():
 
     return args
 
+# Utility function to report best scores
+def report(results, n_top=5):
+    for i in range(1, n_top + 1):
+        candidates = np.flatnonzero(results['rank_test_score'] == i)
+        for candidate in candidates:
+            print("Model with rank: {0}".format(i))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})".format(
+                  results['mean_test_score'][candidate],
+                  results['std_test_score'][candidate]))
+            print("Parameters: {0}".format(results['params'][candidate]))
+            print("")
+
 
 def train(X, y):
-    logistic = LogisticRegression(class_weight="balanced")
-    logistic.fit(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
 
-    return logistic
+    stdsc = StandardScaler()
+    X_train_std = stdsc.fit_transform(X_train)
+    X_test_std = stdsc.transform(X_test)
+
+    logistic = LogisticRegression(class_weight="balanced", penalty='l1')
+
+    grid_search_params = {'C': uniform(0.001, 1.5)}
+    gs = RandomizedSearchCV(
+        logistic,
+        grid_search_params,
+        cv=10, scoring='accuracy',
+        n_jobs=-1,
+        random_state=1
+    )
+
+    gs.fit(X_train_std, y_train)
+
+    return gs, stdsc
 
 def describe(model):
     params = dict(
@@ -121,8 +161,8 @@ def main():
     if (human is not None) and os.path.isfile(human) and not overwrite:
         sys.exit("File %s exists. Use --overwrite flag or other filename." % (human, ))
 
-    result_model = train(X, Y)
-    pickle.dump(result_model, open(result, 'wb'), protocol=2)
+    result_model, scaler = train(X, Y)
+    pickle.dump((result_model, scaler), open(result, 'wb'), protocol=2)
 
     if human is not None:
         human_file = open(human, 'w')
