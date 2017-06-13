@@ -5,6 +5,7 @@ import argparse
 
 from ConfigParser import ConfigParser
 
+import uuid
 
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
@@ -17,17 +18,19 @@ def parse_cost_config(config_file):
     config.readfp(open(config_file))
 
     costs = dict()
-    for name, cost in config.items('FIELDS'):
+    for name, cost in config.items('COSTS'):
         costs[name] = float(cost)
 
     conf = dict(
         attribute=config.get('ATTRUBUTE', 'name'),
-        type=config.get('ATTRUBUTE', 'type'),
+        background=config.getfloat('BACKGROUND', 'cost'),
         costs=costs
     )
 
     return conf
 
+def temp_name(name, prefix):
+    return 't' + prefix + name
 
 
 def parse_args():
@@ -42,11 +45,25 @@ def parse_args():
         help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
     )
     parser.add_argument(
-        '--layer',
-        dest='layer',
+        '--roads',
+        dest='roads',
         action='store',
         required=True,
-        help='Name of layer.'
+        help='Name of vector layer.'
+    )
+    parser.add_argument(
+        '--stocks',
+        dest='stocks',
+        action='store',
+        required=True,
+        help='Name for raster layer of stock locations.'
+    )
+    parser.add_argument(
+        '--output',
+        dest='output',
+        action='store',
+        required=True,
+        help='Name of output cost raster.'
     )
     parser.add_argument(
         '--cost_config',
@@ -67,12 +84,13 @@ def parse_args():
 
     return args
 
-
 def main():
     args = parse_args()
     args = vars(args)
 
-    layer = args['layer']
+    roads = args['roads']
+    stocks = args['stocks']
+    output = args['output']
     overwrite = args['overwrite']
 
     cost_config = args['cost_config']
@@ -80,7 +98,7 @@ def main():
 
     attribute = cost_params['attribute']
     costs = cost_params['costs']
-    vect_type = cost_params['type']
+    background_cost = cost_params['background']
 
     config = args['config']
     config_params = Params(config)
@@ -99,17 +117,41 @@ def main():
         init_loc=True
     )
 
-    for attr_value, cost in costs.iteritems():
+    prefix = uuid.uuid4().hex
+    tmp_cost_name = temp_name('cost', prefix)
+    background_name = temp_name('back', prefix)
+
+    try:
+        for attr_value, cost in costs.iteritems():
+            grs.grass.run_command(
+                'v.to.rast',
+                input=roads,
+                output=temp_name(attr_value, prefix),
+                type='line',
+                where='%s = "%s"' % (attribute, attr_value),
+                use='val',
+                value=cost
+            )
+        road_list = [temp_name(name, prefix) for name in costs.keys()]
+
         grs.grass.run_command(
-            'v.to.rast',
-            input=layer,
-            output=attr_value,
-            type=vect_type,
-            where='%s = "%s"' % (attribute, attr_value),
-            use='val',
-            value=cost,
-            overwrite=overwrite
+            'r.mapcalc',
+            expression="%s = %s" % (background_name, background_cost)
         )
+        road_list.append(background_name)
+        print road_list
+
+        grs.grass.run_command('r.patch', input=','.join(road_list), output=tmp_cost_name)
+        print grs.grass.read_command('r.report', map=tmp_cost_name, units='c')
+
+        grs.grass.run_command(
+            'r.cost',
+            input=tmp_cost_name, output=output,
+            start_raster=stocks, overwrite=overwrite
+        )
+
+    finally:
+        grs.grass.run_command('g.remove', type='rast', pattern=prefix+'*', flags='f')
 
 if __name__ == '__main__':
     main()

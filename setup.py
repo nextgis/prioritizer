@@ -24,7 +24,7 @@ setup(name='prioretizer',
           "bin/drop_layer",
           "bin/import_layer",
           "bin/list_layer",
-          "bin/rasterize",
+          "bin/walking_cost",
           "bin/train_model",
       ]
 )
