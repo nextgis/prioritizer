@@ -86,77 +86,23 @@ def parse_args():
 
 class Trainer:
     def __init__(self, X, y):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
-        self.X_train = X_train
-        self.X_test = X_test
-        self.y_train = y_train
-        self.y_test = y_test
+        # На данный момент используется заглушка
+        self.diff = -(X[:, 0] - X[:, 1])/1000
 
-        stdsc = StandardScaler()
-        self.X_train_std = stdsc.fit_transform(X_train)
-        self.X_test_std = stdsc.transform(X_test)
-
-        self.scaler = stdsc
         self.model = None
-        self.train_description = None
+        self.scaler = None
 
     def train(self):
-        logistic = LogisticRegression(class_weight="balanced", penalty='l1')
-        grid_search_params = {'C': uniform(0.001, 1.5)}
-        gs = RandomizedSearchCV(
-            logistic,
-            grid_search_params,
-            cv=10, scoring='accuracy',
-            n_jobs=-1,
-            random_state=1
-        )
-
-        gs.fit(self.X_train_std, self.y_train)
-
-        self.model = gs.best_estimator_
-        self.train_description = gs.cv_results_
+        pass
 
     def predict_probas(self, X):
-        if self.model is None:
-            raise RuntimeError('Train model first, then use it')
-
-        probas = self.model.predict_proba(X)
-        # probas is numpy array somethink like:
-        #           p(y==0) ,    p(y==1)
-        # array([[0.50226361, 0.49773639],
-        # [0.94820054, 0.05179946],
-        # [0.34371554, 0.65628446]])
-
-        return probas[:, 1]
+        # Возвращаем логистическую функцию разностей стоимостей
+        return 1.0/(1 + np.exp(self.diff))
 
     def describe(self):
-
-        test_predict = self.model.predict(self.X_test_std)
-        test_accuracy = accuracy_score(self.y_test, test_predict)
-
-        train_predict = self.model.predict(self.X_train_std)
-        train_accuracy = accuracy_score(self.y_train, train_predict)
-
-        cm = confusion_matrix(self.y_test, test_predict)
-
-        params = dict(
-            coefs = self.model.coef_,
-            intercept = self.model.intercept_,
-            train_acc = train_accuracy,
-            test_acc = test_accuracy,
-            cm = cm
-        )
-
         description = """
-        MODEL: Weighted Logistic Regresion,
-        coefs: %(coefs)s,
-        intercept: %(intercept)s
-        ------------------------------------
-        Train accuracy: %(train_acc)s
-        Test accuracy: %(test_acc)s
-        
-        Test confusion matrix = %(cm)s
-        """ % params
+        На данный момент обучение в явном виде отсутствует. Используется заглушка.
+        """
 
         return description
 
