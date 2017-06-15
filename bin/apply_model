@@ -6,10 +6,7 @@ import sys
 
 import argparse
 
-import pickle
-
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
@@ -21,8 +18,15 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
 
     parser.add_argument(
-        '--model',
-        dest='model',
+        '--config',
+        dest='config',
+        action='store',
+        default=DEFAULT_CONFIG_NAME,
+        help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
+    )
+    parser.add_argument(
+        '--model_raster',
+        dest='model_raster',
         action='store',
         required=True,
         help='Name of result raster.'
@@ -35,11 +39,20 @@ def parse_args():
         help='Name of result file to store model.'
     )
     parser.add_argument(
-        '--data',
-        dest='data',
+        '--lonlat',
+        dest='lonlat',
         action='store',
         required=True,
-        help='Name of data file.'
+        help='Name of file with coordinates.'
+    )
+    parser.add_argument(
+        '--proj',
+        dest='proj',
+        action='store',
+        default="+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs",
+        help="""Description of projection in PROJ4 format.
+            Default: +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs
+        """
     )
     parser.add_argument(
         '--overwrite',
@@ -53,41 +66,57 @@ def parse_args():
 
     return args
 
-
-def predict_probas(model, X):
-    probas = model.predict_proba(X)
-    # probas is numpy array somethink like:
-    #           p(y==0) ,    p(y==1)
-    # array([[0.50226361, 0.49773639],
-           # [0.94820054, 0.05179946],
-           # [0.34371554, 0.65628446]])
-
-    return probas[:, 1]
-
 def main():
     args = parse_args()
     args = vars(args)
 
     overwrite = args['overwrite']
     result = args['result']
-    model_file = args['model']
+    model_raster = args['model_raster']
 
-    data = args['data']
-    if data == '-':
-        data = sys.stdin
+    coords = args['lonlat']
+    if coords == '-':
+        coords = sys.stdin
 
-    X = np.loadtxt(data, delimiter=',')
-    if len(X.shape) == 1:
-        X = X.reshape(1, -1)
+    lonlat = np.loadtxt(coords, delimiter=',')
+    if len(lonlat.shape) != 2:
+        raise ValueError('Coordinates must be in X,Y format')
+
+    config = args['config']
+    config_params = Params(config)
+
+    grass_lib = config_params.grass_lib
+    grass_exec = config_params.grass_exec
+
+    location = config_params.location
+    dbase = config_params.grassdata
+
+    grs = GRASS(
+        gisexec=grass_exec,
+        gisbase=grass_lib,
+        grassdata=dbase,
+        location=location,
+        init_loc=True
+    )
 
     if os.path.isfile(result) and not overwrite:
         sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
 
-    model, scaler = pickle.load(open(model_file, 'rb'))
-    X_std = scaler.transform(X)
+    probas = []
+    for lon, lat in lonlat:
+        xy = grs.grass.read_command(
+            'm.proj', coordinates="%s,%s" % (lon, lat), separator=',', flags='i')
+        # delete z-coordinate
+        xy = xy.split(",")[:2]
+        xy = ','.join(xy)
 
-    probas = [str(p) for p in predict_probas(model, X_std)]
-    probas = '\n'.join(probas)
+        p = grs.grass.read_command(
+            'r.what', map=model_raster, coordinates=xy)
+        # delete coordinates
+        p = p.split("|")[-1]
+        probas.append(p)
+
+    probas = ''.join(probas)
 
     if result == '-':
         print probas

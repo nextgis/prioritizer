@@ -60,6 +60,13 @@ def parse_args():
         help='Name of result file to store model.'
     )
     parser.add_argument(
+        '--result_raster',
+        dest='result_raster',
+        action='store',
+        required=True,
+        help='Name of result raster.'
+    )
+    parser.add_argument(
         '--human',
         dest='human',
         action='store',
@@ -109,6 +116,19 @@ class Trainer:
         self.model = gs.best_estimator_
         self.train_description = gs.cv_results_
 
+    def predict_probas(self, X):
+        if self.model is None:
+            raise RuntimeError('Train model first, then use it')
+
+        probas = self.model.predict_proba(X)
+        # probas is numpy array somethink like:
+        #           p(y==0) ,    p(y==1)
+        # array([[0.50226361, 0.49773639],
+        # [0.94820054, 0.05179946],
+        # [0.34371554, 0.65628446]])
+
+        return probas[:, 1]
+
     def describe(self):
 
         test_predict = self.model.predict(self.X_test_std)
@@ -147,7 +167,9 @@ def main():
     overwrite = args['overwrite']
     x = args['x'].split(',')
     y = args['y']
+
     result = args['result']
+    result_raster = args['result_raster']
     human = args['human']
 
     config = args['config']
@@ -178,6 +200,9 @@ def main():
     trainer = Trainer(X, Y)
     trainer.train()
     pickle.dump((trainer.model, trainer.scaler), open(result, 'wb'), protocol=2)
+
+    probas = trainer.predict_probas(X)
+    grs.array_to_rast(probas, result_raster, overwrite=overwrite)
 
     if human is not None:
         human_file = open(human, 'w')
