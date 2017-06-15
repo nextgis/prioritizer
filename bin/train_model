@@ -87,7 +87,7 @@ def parse_args():
 class Trainer:
     def __init__(self, X, y):
         # На данный момент используется заглушка
-        self.diff = -(X[:, 0] - X[:, 1])/1000
+        self.diff = -(X[:, 0] - X[:, 1])/1000.0
 
         self.model = None
         self.scaler = None
