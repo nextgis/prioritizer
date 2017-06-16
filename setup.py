@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='prioretizer',
-      version='0.6.0',
+      version='0.6.1',
       description='Prioretization',
 
       url='https://github.com/nextgis/prioritizer',
@@ -22,6 +22,7 @@ setup(name='prioretizer',
           "bin/apply_model",
           "bin/create_db",
           "bin/drop_layer",
+          "bin/export_layer",
           "bin/import_layer",
           "bin/list_layer",
           "bin/train_model",

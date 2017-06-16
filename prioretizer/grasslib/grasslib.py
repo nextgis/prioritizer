@@ -75,6 +75,30 @@ class GRASS:
             else:
                 raise GrassRuntimeError("The location %s exists" % (self.location, ))
 
+    def export_to_geofile(self, mapname, filename, type, overwrite=False):
+        """Export map to geofile. 
+        
+        :param mapname:   Name of raster/vector map
+        :param filename:  Name of output file
+        :param type:    Type of geofile ('rast' or 'vect')
+        :param overwrite:  Overwrite, if file exists.
+        """
+        if type == 'rast':
+            command = 'r.out.gdal'
+            outformat = 'GTiff'
+        elif type == 'vect':
+            command = 'v.out.ogr'
+            outformat = 'GeoJSON'
+        else:
+            raise GrassRuntimeError('Geofile type "%s" is not supported.' % (type,))
+
+        self.grass.run_command(
+            command,
+            input=mapname, output=filename,
+            format=outformat,
+            overwrite=overwrite
+        )
+
     def import_geofile(self, filename, mapname, type, overwrite=False):
         """
         Import geofile into current MAPSET. Reproject the geofile before impporting.
