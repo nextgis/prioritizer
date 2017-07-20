@@ -10,6 +10,8 @@ import uuid
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
+from prioretizer.models.walking_cost import WalkingCost, RasterCost
+
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 
@@ -30,6 +32,7 @@ def parse_cost_config(config_file):
     return conf
 
 def temp_name(name, prefix):
+    name = name.replace(' ', '_')
     return 't' + prefix + name
 
 
@@ -118,40 +121,41 @@ def main():
     )
 
     prefix = uuid.uuid4().hex
-    tmp_cost_name = temp_name('cost', prefix)
     background_name = temp_name('back', prefix)
 
+    raster_costs = []
     try:
         for attr_value, cost in costs.iteritems():
+            name = temp_name(attr_value, prefix)
             grs.grass.run_command(
                 'v.to.rast',
                 input=roads,
-                output=temp_name(attr_value, prefix),
+                output=name,
                 type='line',
                 where='%s = "%s"' % (attribute, attr_value),
                 use='val',
-                value=cost
+                value=1
             )
-        road_list = [temp_name(name, prefix) for name in costs.keys()]
+            raster_costs.append(RasterCost(name, cost))
 
         grs.grass.run_command(
             'r.mapcalc',
             expression="%s = %s" % (background_name, background_cost)
         )
-        road_list.append(background_name)
-        print road_list
+        raster_costs.append(RasterCost(background_name, background_cost))
 
-        grs.grass.run_command('r.patch', input=','.join(road_list), output=tmp_cost_name)
-        print grs.grass.read_command('r.report', map=tmp_cost_name, units='c')
-
-        grs.grass.run_command(
-            'r.cost',
-            input=tmp_cost_name, output=output,
-            start_raster=stocks, overwrite=overwrite
+        # import ipdb; ipdb.set_trace()
+        wc = WalkingCost(grs)
+        wc.walking_cost(
+            raster_costs=raster_costs, stocks=stocks, walking_cost=output,
+            overwrite=overwrite
         )
 
     finally:
-        grs.grass.run_command('g.remove', type='rast', pattern=prefix+'*', flags='f')
+        for rc in raster_costs:
+            name, _ = rc
+            grs.grass.run_command('g.remove', type='rast', name=name, flags='f')
+
 
 if __name__ == '__main__':
     main()
