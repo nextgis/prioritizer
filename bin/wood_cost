@@ -12,6 +12,8 @@ import uuid
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
+from prioretizer.models.utils import temp_name
+
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 Wood_costs = namedtuple('WoodCost', 'label, wood_cost, d_cost, h_cost, b_cost')
@@ -45,9 +47,6 @@ class Cost_params:
 
         return Wood_costs(label, wood_cost, d_cost, h_cost, b_cost)
 
-
-def temp_name(name, prefix):
-    return 't' + prefix + name
 
 
 def parse_args():

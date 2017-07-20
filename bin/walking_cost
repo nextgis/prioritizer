@@ -11,6 +11,7 @@ from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
 from prioretizer.models.walking_cost import WalkingCost, RasterCost
+from prioretizer.models.utils import temp_name
 
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 

@@ -1,17 +1,16 @@
 # encoding: utf-8
 
+import uuid
+
 from collections import namedtuple
 
-import uuid
+from utils import temp_name
 
 # Cost of walking for raster
 RasterCost = namedtuple('RasterCost', 'RasterName, WalkingCost')
 
 
-def temp_name(name, prefix):
-    return 't' + prefix + name
-
-class WalkingCost():
+class WalkingCost:
     def __init__(self, grass):
         """Create raster of walking cost using costs of particular rasters
 
@@ -36,8 +35,11 @@ class WalkingCost():
             for rc in raster_costs:
                 name, cost = rc
                 output = temp_name(name, prefix)
-                self.grs.grass.mapcalc("${out} = ${rast} * ${cost}", out=output, rast=name, cost=cost,
-                                 quiet=True)
+                self.grs.grass.mapcalc(
+                    "${out} = ${rast} * ${cost}",
+                    out=output, rast=name, cost=cost,
+                    quiet=True
+                )
                 road_list.append(output)
 
             self.grs.grass.run_command('r.patch', input=','.join(road_list), output=temp_cost)
@@ -52,4 +54,3 @@ class WalkingCost():
             for name in road_list:
                 self.grs.grass.run_command('g.remove', type='rast', name=name, flags='f')
             self.grs.grass.run_command('g.remove', type='rast', name=temp_cost, flags='f')
-
