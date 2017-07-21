@@ -12,11 +12,12 @@ import uuid
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
+from prioretizer.models.wood_cost import WoodCost, Wood_costs
 from prioretizer.models.utils import temp_name
+
 
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
-Wood_costs = namedtuple('WoodCost', 'label, wood_cost, d_cost, h_cost, b_cost')
 
 class Cost_params:
     def __init__(self, config_file):
@@ -133,31 +134,27 @@ def main():
         expression = "%s + 1" % (cost_params.bonitet_column, )
         grs.grass.run_command('v.db.update', map=woods, column=bonitet_col_name, value=expression)
 
-        for wc in cost_params.costs:
-            expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s)*(%(persp_fact)s*%(persp)s+1)" \
-                % dict(
-                    count_col=cost_params.forest_count_column,
-                    wood_cost=wc.wood_cost,
-                    bon_cost=wc.b_cost,
-                    bonitet=bonitet_col_name,
-                    diam=cost_params.diameter_column,
-                    d_cost=wc.d_cost,
-                    h=cost_params.height_column,
-                    h_cost=wc.h_cost,
-                    persp=cost_params.perspective_column,
-                    persp_fact=cost_params.persp_factor,
-            )
-            where = "%(type_col)s = \"%(label)s\"" % dict(type_col=cost_params.forest_type_column, label=wc.label)
-            grs.grass.run_command('v.db.update', map=woods, column=col_name, value=expression, where=where)
+        wc = WoodCost(
+            grs, woods,
+            forest_type_column=cost_params.forest_type_column,
+            forest_count_column=cost_params.forest_count_column,
+            diameter_column=cost_params.diameter_column,
+            height_column=cost_params.height_column,
+            perspective_column=cost_params.perspective_column,
+            bonitet_column=bonitet_col_name,
+            cumulative_cost=col_name
+        )
 
-        grs.grass.run_command('v.to.rast', input=woods, output=output, use='attr', attribute_column=col_name, overwrite=overwrite)
+        wc.wood_cost(
+            output,
+            cost_params.costs, cost_params.persp_factor, cost_params.background_cost,
+            overwrite=overwrite
+        )
+
     finally:
         grs.grass.run_command('v.db.dropcolumn', map=woods, columns=col_name)
         grs.grass.run_command('v.db.dropcolumn', map=woods, columns=bonitet_col_name)
 
-    expression = '{result} = if(isnull({result}), {background}, {result})'.format(result=output, background=cost_params.background_cost)
-    print expression
-    grs.grass.run_command('r.mapcalc', expression=expression, overwrite=True)
 
 if __name__ == '__main__':
     main()
