@@ -8,7 +8,7 @@ from utils import temp_name
 
 # Cost of walking for raster
 RasterCost = namedtuple('RasterCost', 'RasterName, WalkingCost')
-
+WalkingCostParams = namedtuple('WalkingCostParams', 'stocks, costs_list')
 
 class WalkingCost:
     def __init__(self, grass):
@@ -19,11 +19,11 @@ class WalkingCost:
         """
         self.grs = grass
 
-    def walking_cost(self, raster_costs, stocks, walking_cost, overwrite=False):
+    def walking_cost(self, walking_cost, raster_costs_params, overwrite=False):
         """Create raster of walking cost using costs of particular rasters
 
         :param raster_costs: Walking costs for rasters
-        :type raster_costs:  List of RasterCost tuples
+        :type raster_costs:  RasterCostParams
         
         :param stocks: Name of raster for starting data points
         :param walking_cost: Name of output walking cost raster
@@ -31,6 +31,9 @@ class WalkingCost:
         prefix = uuid.uuid4().hex
         temp_cost = temp_name('temp_cost', prefix)
         road_list = []
+
+        raster_costs = raster_costs_params.costs_list
+        stocks = raster_costs_params.stocks
         try:
             for rc in raster_costs:
                 name, cost = rc

@@ -10,7 +10,7 @@ import uuid
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
-from prioretizer.models.walking_cost import WalkingCost, RasterCost
+from prioretizer.models.walking_cost import WalkingCost, RasterCost, WalkingCostParams
 from prioretizer.models.utils import temp_name
 
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
@@ -145,10 +145,10 @@ def main():
         )
         raster_costs.append(RasterCost(background_name, background_cost))
 
-        # import ipdb; ipdb.set_trace()
+        params = WalkingCostParams(stocks, raster_costs)
         wc = WalkingCost(grs)
         wc.walking_cost(
-            raster_costs=raster_costs, stocks=stocks, walking_cost=output,
+            walking_cost=output, raster_costs_params=params,
             overwrite=overwrite
         )
 

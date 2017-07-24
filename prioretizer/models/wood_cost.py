@@ -1,13 +1,10 @@
 # encoding: utf-8
 
-import uuid
-
 from collections import namedtuple
 
-from utils import temp_name
 
-
-Wood_costs = namedtuple('WoodCost', 'label, wood_cost, d_cost, h_cost, b_cost')
+SpecieCost = namedtuple('SpecieCost', 'label, wood_cost, d_cost, h_cost, b_cost')
+WoodCostParams = namedtuple('WoodCostParams', 'woodcosts, persp_factor, background_cost')
 
 
 class WoodCost:
@@ -37,12 +34,16 @@ class WoodCost:
 
         self.cumulative_cost = cumulative_cost
 
-    def wood_cost(self, output, cost_params, persp_factor, background_cost, overwrite=False):
+    def wood_cost(self, output, cost_params, overwrite=False):
+
+        persp_factor = cost_params.persp_factor
+        background_cost = cost_params.background_cost
+        costs_list = cost_params.woodcosts
 
         # Create column with cost, then rasterize the column.
         # It should be faster and simple then raster calculations (less rasterisation)
 
-        for wc in cost_params:
+        for wc in costs_list:
             expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s)*(%(persp_fact)s*%(persp)s+1)" \
                 % dict(
                     count_col=self.forest_count_column,

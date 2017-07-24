@@ -3,7 +3,6 @@
 
 import argparse
 
-from collections import namedtuple
 
 from ConfigParser import ConfigParser
 
@@ -12,7 +11,7 @@ import uuid
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
 
-from prioretizer.models.wood_cost import WoodCost, Wood_costs
+from prioretizer.models.wood_cost import WoodCost, WoodCostParams, SpecieCost
 from prioretizer.models.utils import temp_name
 
 
@@ -46,7 +45,7 @@ class Cost_params:
         h_cost = self.config.getfloat(section, 'h_cost')
         b_cost = self.config.getfloat(section, 'b_cost')
 
-        return Wood_costs(label, wood_cost, d_cost, h_cost, b_cost)
+        return SpecieCost(label, wood_cost, d_cost, h_cost, b_cost)
 
 
 
@@ -132,7 +131,7 @@ def main():
         grs.grass.run_command('v.db.addcolumn', map=woods, columns='%s double' % (bonitet_col_name,))
         # Bonitet column has liters in the codes and Bonitet can be == 0 => recode it to new column:
         expression = "%s + 1" % (cost_params.bonitet_column, )
-        grs.grass.run_command('v.db.update', map=woods, column=bonitet_col_name, value=expression)
+        grs.grass.run_command('v.db.update', map=woods,  bonitet_col_name, value=expression)
 
         wc = WoodCost(
             grs, woods,
@@ -145,11 +144,8 @@ def main():
             cumulative_cost=col_name
         )
 
-        wc.wood_cost(
-            output,
-            cost_params.costs, cost_params.persp_factor, cost_params.background_cost,
-            overwrite=overwrite
-        )
+        costs = WoodCostParams(cost_params.costs, cost_params.persp_factor, cost_params.background_cost)
+        wc.wood_cost(output, costs, overwrite=overwrite)
 
     finally:
         grs.grass.run_command('v.db.dropcolumn', map=woods, columns=col_name)
