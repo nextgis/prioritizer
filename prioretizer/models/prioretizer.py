@@ -14,7 +14,7 @@ class Prioretizer:
         self.walking_cost = walking_cost
         self.wood_cost = wood_cost
 
-    def calc_priorities(self, output, walk_params, wood_params, overwrite=False):
+    def calc_priorities(self, output, walk_params, wood_params, alpha=0.01, overwrite=False):
         prefix = uuid.uuid4().hex
         walk_rast = temp_name('walk', prefix)
         wood_rast = temp_name('wood', prefix)
@@ -24,17 +24,33 @@ class Prioretizer:
             self.walking_cost.walking_cost(
                 walking_cost=walk_rast, raster_costs_params=walk_params,
                 overwrite=overwrite)
-
             self.grs.grass.mapcalc(
-                "${out} = 1.0/(1 + exp(-(${wood} - ${walk})))",
-                out=output, wood=wood_rast, walk=walk_rast,
+                "${out} = 1.0 / ( 1 + exp( -${alpha}*(${wood} - ${walk}) ) )",
+                out=output, wood=wood_rast, walk=walk_rast, alpha=alpha,
                 overwrite=overwrite)
         finally:
             self.grs.grass.run_command('g.remove', type='rast', name=wood_rast, flags='f')
             self.grs.grass.run_command('g.remove', type='rast', name=walk_rast, flags='f')
 
-    def get_scores(self, points, priorities):
-        pass
+    def get_scores(self, priorities, points, class_column='value'):
+        """Calculate summary scores in point locations 
+        
+        :param priorities: Name of priorities raster (0 == low, 1 == high) 
+        :param points: Vector map of locations (ground truth)
+        :param class_column: Name of column to store class label (0 == low, 1 = high) 
+        :return: Value of proximity between points and raster 
+        """
+        rast_column = temp_name('cost', uuid.uuid4().hex)
+        try:
+            self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column)
+            # The simplest form of proximity: dot product
+            self.grs.grass.run_command('v.db.update', map=points, column=rast_column, query_column="%s * %s" % (class_column, rast_column))
+            stat = self.grs.grass.parse_command('v.univar', map=points, column=rast_column, flags='g')
+        finally:
+            self.grs.grass.run_command('v.db.dropcolumn', map=points, columns=rast_column)
+
+        return stat['mean']
+
 
 
 if __name__ == "__main__":
@@ -87,20 +103,21 @@ if __name__ == "__main__":
     )
 
     species_costs = [
-        # 'DUB', 'LIPA', 'KEDR', 'JASEN'
-        SpecieCost('DUB', 20, 3, 5, 2),
-        SpecieCost('LIPA', 20, 3, 5, 2),
-        SpecieCost('KEDR', 20, 3, 5, 2),
-        SpecieCost('JASEN', 20, 3, 5, 2)
+        SpecieCost('DUB', 15.0, 20, 15, 1),
+        SpecieCost('LIPA', 12.0, 20, 15, 1),
+        SpecieCost('KEDR', 14.0, 20, 15, 1),
+        SpecieCost('JASEN', 13.0, 20, 15, 1)
     ]
 
-    wood_params = WoodCostParams(species_costs, 3, 10)
+    wood_params = WoodCostParams(species_costs, 1, 100)
 
     prior = Prioretizer(grs, walk_c, wood_c)
 
     prior.calc_priorities('tmp_prior', walk_params, wood_params, overwrite=True)
 
-    
+    print prior.get_scores('tmp_prior', 'test', 'value')
+
+
 
 
 
