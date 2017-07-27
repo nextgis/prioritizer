@@ -34,13 +34,18 @@ class WalkingCost:
 
         raster_costs = raster_costs_params.costs_list
         stocks = raster_costs_params.stocks
+        region = self.grs.grass.core.region()
+
+        # NOTE: Cells must have approx square form!
+        resolution = (region['nsres'] + region['ewres']) / 2
+
         try:
             for rc in raster_costs:
                 name, cost = rc
                 output = temp_name(name, prefix)
                 self.grs.grass.mapcalc(
-                    "${out} = ${rast} * ${cost}",
-                    out=output, rast=name, cost=cost,
+                    "${out} = ${rast} * ${cost} * ${resolution}",
+                    out=output, rast=name, cost=cost, resolution=resolution,
                     quiet=True
                 )
                 road_list.append(output)
