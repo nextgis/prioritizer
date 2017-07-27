@@ -131,7 +131,7 @@ def main():
         grs.grass.run_command('v.db.addcolumn', map=woods, columns='%s double' % (bonitet_col_name,))
         # Bonitet column has liters in the codes and Bonitet can be == 0 => recode it to new column:
         expression = "%s + 1" % (cost_params.bonitet_column, )
-        grs.grass.run_command('v.db.update', map=woods,  bonitet_col_name, value=expression)
+        grs.grass.run_command('v.db.update', map=woods, column=bonitet_col_name, value=expression)
 
         wc = WoodCost(
             grs, woods,
