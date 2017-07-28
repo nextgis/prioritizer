@@ -74,8 +74,9 @@ class Optimizer:
     def optimize(self, x0, nsteps=10, nshows=50):
         x = x0
         for i in range(nshows):
-            x, y, iter, funcals, _, sols = optimize.fmin(self._loss, x, maxiter=nsteps)
-            print x, y, iter, funcals
+            x = optimize.fmin(self._loss, x, maxiter=nsteps)
+            # x, y, iter, funcals, _, sols = data
+            print x #, y, iter, funcals
 
         return x
 
