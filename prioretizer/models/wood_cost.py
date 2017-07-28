@@ -44,7 +44,7 @@ class WoodCost:
         # It should be faster and simple then raster calculations (less rasterisation)
 
         for wc in costs_list:
-            expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s)*(%(persp_fact)s*%(persp)s+1)" \
+            expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s) * (%(persp_fact)s*%(persp)s+1)" \
                 % dict(
                     count_col=self.forest_count_column,
                     wood_cost=wc.wood_cost,
