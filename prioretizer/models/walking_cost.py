@@ -45,7 +45,7 @@ class WalkingCost:
                 output = temp_name(name, prefix)
                 self.grs.grass.mapcalc(
                     "${out} = ${rast} * ${cost} * ${resolution}",
-                    out=output, rast=name, cost=cost, resolution=resolution,
+                    out=output, rast=name, cost=format(cost, '.20f'), resolution=resolution,
                     quiet=True
                 )
                 road_list.append(output)
