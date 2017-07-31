@@ -2,6 +2,8 @@
 
 import uuid
 
+import logging
+
 from scipy import optimize
 import numpy as np
 
@@ -68,7 +70,15 @@ class Prioretizer:
         return result
 
 class Optimizer:
-    def __init__(self, grass, wood_stocks, road_types, wood_types, walking_model, wood_model, class_points, class_column):
+    def __init__(
+            self,
+            grass,
+            wood_stocks,
+            road_types, wood_types,
+            walking_model, wood_model,
+            class_points, class_column,
+            log_file=None
+    ):
         self.grs = grass
 
         self.wood_stocks = wood_stocks
@@ -84,18 +94,54 @@ class Optimizer:
         #                  road_costs,         (wood spec params==4), persp_fact, background, alpha
         self.param_count = len(self.road_types) + len(self.wood_types) * 4 + 2 + 1
 
+        # Logging
+        self.log_file = log_file
+        self.logger = logging.getLogger(self.log_file)
+        self.logger.setLevel(logging.DEBUG)
+        handler = logging.FileHandler(self.log_file)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s: %(message)s', datefmt='%b %d %H:%M:%S')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+
+        # Count of loss function call
+        self.counter = 0
+
+
     def optimize(self, x0, nsteps=100, nshows=5):
         x = x0
         for i in range(nshows):
-            x = optimize.fmin(self._loss, x, maxiter=nsteps)
-            # x, y, iter, funcals, _, sols = data
-            print x #, y, iter, funcals
+            data = optimize.fmin(self._loss, x, maxiter=nsteps, full_output=True)
+
+            x, y, iter, calls, warn = data
+            print 'xy', x, y
 
         return x
 
-    def _barrier(self, x):
+    def _from_flatten_params(self, x):
+        assert len(x) == self.param_count
+
+        raster_costs = []
+        for i, road in enumerate(self.road_types):
+            raster_costs.append(RasterCost(road, x[i]))
+
+        walk_params = WalkingCostParams(self.wood_stocks, raster_costs)
+
+        species_costs = []
+        for i, spec in enumerate(self.wood_types):
+            param_number = len(self.road_types) + i * 4
+            species_costs.append(
+                SpecieCost(spec, x[param_number], x[param_number + 1], x[param_number + 2], x[param_number + 3])
+            )
+
+        wood_params = WoodCostParams(species_costs, x[-3], x[-2])
+
+        alpha = x[-1]
+
+        return (walk_params, wood_params, alpha)
+
+    def _penalty(self, x):
         # coefs must be finite numbers => sum of the coefs must be close to 1
-        s = np.sum(x)
+        s = np.sum(x[:-1])  # the last param is parameter of logistic function, it can be >1
         barier1 = (1 - s)**2
 
         # coefs must be >= 0
@@ -110,32 +156,25 @@ class Optimizer:
         """
         # NB: format of x is strictly inherited from model. Change of the model must be followed by changen in x
 
-        assert len(x) == self.param_count
+        self.counter += 1
 
-        raster_costs = []
-        for i, road in enumerate(self.road_types):
-            raster_costs.append(RasterCost(road, x[i]))
-
-        walk_params = WalkingCostParams(self.wood_stocks, raster_costs)
-
-        species_costs = []
-        for i, spec in enumerate(self.wood_types):
-            param_number = len(self.road_types) + i*4
-            species_costs.append(
-                SpecieCost(spec, x[param_number], x[param_number+1], x[param_number+2], x[param_number+3])
-            )
-
-        wood_params = WoodCostParams(species_costs, x[-3], x[-2])
+        walk_params, wood_params, alpha = self._from_flatten_params(x)
 
         prior = Prioretizer(grs, walk_c, wood_c)
         priorities = temp_name('prior', uuid.uuid4().hex)
         try:
-            prior.calc_priorities(priorities, walk_params, wood_params, alpha=x[-1], overwrite=True)
+            prior.calc_priorities(priorities, walk_params, wood_params, alpha)
+            # We use MINIMIZER => multiply the scores by -1
             scores = -float(prior.get_scores(priorities, self.class_points, self.class_column, weight=True))
         finally:
             self.grs.grass.run_command('g.remove', type='rast', name=priorities, flags='f')
 
-        return scores + self._barrier(x)
+        result = scores + self._penalty(x)
+
+        if self.log_file is not None:
+            self.logger.debug('scores = %s, counter = %s, params = %s' % (scores, self.counter, x))
+
+        return result
 
 
 
@@ -195,34 +234,62 @@ if __name__ == "__main__":
         SpecieCost('JASEN', 13.0, 20, 15, 1)
     ]
 
-    # wood_params = WoodCostParams(species_costs, 1, 100)
-
-    # prior = Prioretizer(grs, walk_c, wood_c)
-    # prior.calc_priorities('tmp_prior', walk_params, wood_params, overwrite=True)
-    # print prior.get_scores('tmp_prior', 'test', 'value')
-
     optimizer = Optimizer(
         grs,
         'wood_stocks',
         [rc.RasterName for rc in raster_costs],
         [sp.label for sp in species_costs],
         walk_c, wood_c,
-        'test', 'value'
+        'test', 'value',
+        log_file='optimization.log'
     )
 
     # Flattened parameters of the model
-    coefs = [1.03085151e-03,   1.67208668e-01,   1.99987812e-02,   3.21521229e-02,
-     3.90787687e-02,   4.95187112e-02,   5.78385802e-02,   5.82175088e-02,
-     9.62860391e-02,   1.92760346e-02,   1.55037866e-02,   1.11190428e-02,
-     1.03100897e-01,   1.93574015e-02,   1.52944324e-02,   1.09653287e-02,
-     9.77353922e-02,   1.86953226e-02,   1.50150029e-02,   1.03719337e-02,
-     9.61787994e-02,   1.95725936e-02,   1.53432506e-02,   1.01262706e-02,
-     1.02901364e-03,   1.03929700e-03,   1.18561942e-05]
+    coefs = [
+        1.37095649e-03,   2.02465935e-01,   1.81963054e-02,   2.83265685e-02,
+        3.89390394e-02,   1.33573570e-02,   6.77552132e-02,   6.18582547e-02,
+        7.46590691e-02,   1.41115345e-02,   8.95861468e-03,   9.96205509e-03,
+        1.19912129e-01,   1.37706994e-02,   1.14446084e-02,   1.08629313e-02,
+        1.03890675e-01,   2.99627408e-02,   1.51425264e-02,   8.85908783e-03,
+        1.03905329e-01,   2.03990801e-02,   1.36168678e-02,   7.69956102e-03,
+        6.10754265e-04,   9.48158929e-04,   8.67935842e-05
+    ]
+
     model_params = np.array(coefs)
-    print optimizer.optimize(model_params, nsteps=250, nshows=3)
+    result = optimizer.optimize(model_params, nsteps=2000, nshows=1)
+    print 'res', result
+    print 'Params', optimizer._from_flatten_params(result)
 
+    params = optimizer._from_flatten_params(result)
+    prior = Prioretizer(grs, walk_c, wood_c)
+    prior.calc_priorities('tmp_prior1', params[0], params[1], alpha=params[2], overwrite=True)
+    print 'Prior', prior.get_scores('tmp_prior1', 'test', 'value')
 
+    """
+    walk_params = WalkingCostParams(stocks='wood_stocks',
+                                    costs_list=[RasterCost(RasterName='road_asfalt', WalkingCost=0.00135810273),
+                                                RasterCost(RasterName='road_background', WalkingCost=0.200120044),
+                                                RasterCost(RasterName='road_good_grunt', WalkingCost=0.0186307157),
+                                                RasterCost(RasterName='road_grunt', WalkingCost=0.0282360824),
+                                                RasterCost(RasterName='road_land', WalkingCost=0.0388305908),
+                                                RasterCost(RasterName='road_other', WalkingCost=0.0133757199),
+                                                RasterCost(RasterName='road_trop', WalkingCost=0.0669776983),
+                                                RasterCost(RasterName='road_wood', WalkingCost=0.0615411286)])
+    wood_params = WoodCostParams(
+        woodcosts=[SpecieCost(label='DUB', wood_cost=0.0779503791, d_cost=0.0144156389, h_cost=0.00886547867,
+                              b_cost=0.0100083793),
+                   SpecieCost(label='LIPA', wood_cost=0.119438395, d_cost=0.0139807213, h_cost=0.0114082493,
+                              b_cost=0.0110603359),
+                   SpecieCost(label='KEDR', wood_cost=0.103860385, d_cost=0.0295966978, h_cost=0.0155710759,
+                              b_cost=0.00876444379),
+                   SpecieCost(label='JASEN', wood_cost=0.103857098, d_cost=0.0205588556, h_cost=0.0135884104,
+                              b_cost=0.00764558116)], persp_factor=0.000602364714, background_cost=0.000930362805)
+    alpha = 7.75671128e-05
 
+    prior = Prioretizer(grs, walk_c, wood_c)
+    prior.calc_priorities('tmp_prior', walk_params, wood_params, alpha=alpha, overwrite=True)
+    print prior.get_scores('tmp_prior', 'test', 'value')
 
+    """
 
 
