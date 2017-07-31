@@ -35,12 +35,13 @@ class Prioretizer:
             self.grs.grass.run_command('g.remove', type='rast', name=wood_rast, flags='f')
             self.grs.grass.run_command('g.remove', type='rast', name=walk_rast, flags='f')
 
-    def get_scores(self, priorities, points, class_column='value'):
+    def get_scores(self, priorities, points, class_column='value', weight=True):
         """Calculate summary scores in point locations 
         
         :param priorities: Name of priorities raster (0 == low, 1 == high) 
         :param points: Vector map of locations (ground truth)
         :param class_column: Name of column to store class label (-1 == low, 1 = high) 
+        :param weight:  Use weighted by class number scores if True
         :return: Value of proximity between points and raster 
         """
         rast_column = temp_name('cost', uuid.uuid4().hex)
@@ -48,11 +49,23 @@ class Prioretizer:
             self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column)
             # The simplest form of proximity: dot product
             self.grs.grass.run_command('v.db.update', map=points, column=rast_column, query_column="%s * %s" % (class_column, rast_column))
-            stat = self.grs.grass.parse_command('v.univar', map=points, column=rast_column, flags='g')
+            if weight:
+                positive = self.grs.grass.parse_command(
+                    'v.univar', map=points,
+                    column=rast_column, where="%s>0" % (class_column),
+                    flags='g')
+                negative = self.grs.grass.parse_command(
+                    'v.univar', map=points,
+                    column=rast_column, where="%s<0" % (class_column),
+                    flags='g')
+                result = float(positive['mean']) / float(positive['n']) + float(negative['mean']) / float(negative['n'])
+            else:
+                stat = self.grs.grass.parse_command('v.univar', map=points, column=rast_column, flags='g')
+                result = float(stat['mean'])
         finally:
             self.grs.grass.run_command('v.db.dropcolumn', map=points, columns=rast_column)
 
-        return stat['mean']
+        return result
 
 class Optimizer:
     def __init__(self, grass, wood_stocks, road_types, wood_types, walking_model, wood_model, class_points, class_column):
@@ -71,7 +84,7 @@ class Optimizer:
         #                  road_costs,         (wood spec params==4), persp_fact, background, alpha
         self.param_count = len(self.road_types) + len(self.wood_types) * 4 + 2 + 1
 
-    def optimize(self, x0, nsteps=10, nshows=50):
+    def optimize(self, x0, nsteps=100, nshows=5):
         x = x0
         for i in range(nshows):
             x = optimize.fmin(self._loss, x, maxiter=nsteps)
@@ -118,7 +131,7 @@ class Optimizer:
         priorities = temp_name('prior', uuid.uuid4().hex)
         try:
             prior.calc_priorities(priorities, walk_params, wood_params, alpha=x[-1], overwrite=True)
-            scores = -float(prior.get_scores(priorities, self.class_points, self.class_column))
+            scores = -float(prior.get_scores(priorities, self.class_points, self.class_column, weight=True))
         finally:
             self.grs.grass.run_command('g.remove', type='rast', name=priorities, flags='f')
 
@@ -198,16 +211,15 @@ if __name__ == "__main__":
     )
 
     # Flattened parameters of the model
-    model_params = np.array([
-        0.001, 0.23, 0.02, 0.03, 0.04, 0.05, 0.06, 0.06,
-        0.1, 0.020, 0.015, 0.01,
-        0.1, 0.020, 0.015, 0.01,
-        0.1, 0.020, 0.015, 0.01,
-        0.1, 0.020, 0.015, 0.01,
-        0.001, 0.001,
-        0.00001
-    ])
-    print optimizer.optimize(model_params)
+    coefs = [1.03085151e-03,   1.67208668e-01,   1.99987812e-02,   3.21521229e-02,
+     3.90787687e-02,   4.95187112e-02,   5.78385802e-02,   5.82175088e-02,
+     9.62860391e-02,   1.92760346e-02,   1.55037866e-02,   1.11190428e-02,
+     1.03100897e-01,   1.93574015e-02,   1.52944324e-02,   1.09653287e-02,
+     9.77353922e-02,   1.86953226e-02,   1.50150029e-02,   1.03719337e-02,
+     9.61787994e-02,   1.95725936e-02,   1.53432506e-02,   1.01262706e-02,
+     1.02901364e-03,   1.03929700e-03,   1.18561942e-05]
+    model_params = np.array(coefs)
+    print optimizer.optimize(model_params, nsteps=250, nshows=3)
 
 
 
