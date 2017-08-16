@@ -70,9 +70,9 @@ class WoodCost:
                     persp_fact=persp_factor,
             )
             where = "%(type_col)s = \"%(label)s\"" % dict(type_col=self.forest_type_column, label=wc.label)
-            self.grs.grass.run_command('v.db.update', map=self.mapname, column=self.cumulative_cost, value=expression, where=where)
+            self.grs.grass.run_command('v.db.update', map=self.mapname, column=self.cumulative_cost, value=expression, where=where, quiet=True)
 
-        self.grs.grass.run_command('v.to.rast', input=self.mapname, output=output, use='attr', attribute_column=self.cumulative_cost, overwrite=overwrite)
+        self.grs.grass.run_command('v.to.rast', input=self.mapname, output=output, use='attr', attribute_column=self.cumulative_cost, overwrite=overwrite, quiet=True)
 
         expression = '{result} = if(isnull({result}), {background}, {result})'.format(result=output, background=background_cost)
-        self.grs.grass.run_command('r.mapcalc', expression=expression, overwrite=True)
+        self.grs.grass.run_command('r.mapcalc', expression=expression, overwrite=True, quiet=True)

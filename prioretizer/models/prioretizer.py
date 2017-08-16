@@ -51,7 +51,7 @@ class Prioretizer:
         """
         rast_column = temp_name('cost', uuid.uuid4().hex)
         try:
-            self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column)
+            self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column, quiet=True)
             # The simplest form of proximity: dot product
             # NB: priorities raster contains values in (0, 1), so zeros don't influence the scores =>
             #    rescale priorities to (-1, 1).
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
     walk_c = WalkingCost(grs)
 
-    wood_map = 'test_woods'
+    wood_map = 'vud_all'
     wood_c = WoodCost(
         grs, wood_map,
         forest_type_column='Mr1',
@@ -265,7 +265,11 @@ if __name__ == "__main__":
 
 
     model_params = np.array(coefs)
-    result = optimizer.optimize(model_params, nsteps=2000, nshows=1)
+    try:
+        grs.grass.run_command('v.db.addcolumn', map=wood_map, columns="cost double")
+        result = optimizer.optimize(model_params, nsteps=2000, nshows=1)
+    finally:
+        grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns="cost")
     print 'res', result
     print 'Params', optimizer._from_flatten_params(result)
 

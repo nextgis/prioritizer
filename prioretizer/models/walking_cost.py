@@ -55,10 +55,11 @@ class WalkingCost:
             self.grs.grass.run_command(
                 'r.cost',
                 input=temp_cost, output=walking_cost,
-                start_raster=stocks, overwrite=overwrite
+                start_raster=stocks, overwrite=overwrite,
+                quiet=True
             )
 
         finally:
             for name in road_list:
-                self.grs.grass.run_command('g.remove', type='rast', name=name, flags='f')
-            self.grs.grass.run_command('g.remove', type='rast', name=temp_cost, flags='f')
+                self.grs.grass.run_command('g.remove', type='rast', name=name, flags='f', quiet=True)
+            self.grs.grass.run_command('g.remove', type='rast', name=temp_cost, flags='f', quiet=True)
