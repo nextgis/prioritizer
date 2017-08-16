@@ -46,13 +46,16 @@ class Prioretizer:
         :param points: Vector map of locations (ground truth)
         :param class_column: Name of column to store class label (-1 == low, 1 = high) 
         :param weight:  Use weighted by class number scores if True
-        :return: Value of proximity between points and raster 
+        :return: positive value is good consistency of points and priorities raster
+                 negative value is discrepancy of points and priorities raster
         """
         rast_column = temp_name('cost', uuid.uuid4().hex)
         try:
             self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column)
             # The simplest form of proximity: dot product
-            self.grs.grass.run_command('v.db.update', map=points, column=rast_column, query_column="%s * %s" % (class_column, rast_column))
+            # NB: priorities raster contains values in (0, 1), so zeros don't influence the scores =>
+            #    rescale priorities to (-1, 1).
+            self.grs.grass.run_command('v.db.update', map=points, column=rast_column, query_column="%s * (2 * %s - 1)" % (class_column, rast_column))
             if weight:
                 positive = self.grs.grass.parse_command(
                     'v.univar', map=points,
