@@ -94,7 +94,7 @@ class Optimizer:
         self.class_column = class_column
 
         #                  road_costs,         (wood spec params==4), persp_fact, background, alpha
-        self.param_count = len(self.road_types) + len(self.wood_types) * 4 + 2 + 1
+        self.param_count = len(self.road_types) + len(self.wood_types) + 2 + 1
 
         # Logging
         self.log_file = log_file
@@ -111,7 +111,7 @@ class Optimizer:
     def optimize(self, x0, nsteps=100, nshows=5):
         x = x0
         for i in range(nshows):
-            x = optimize.fmin(self._loss, x, maxiter=nsteps, ftol=1e-5)
+            x = optimize.fmin(self._loss, x, maxiter=nsteps, ftol=1e-6)
 
         return x
 
@@ -120,15 +120,27 @@ class Optimizer:
 
         raster_costs = []
         for i, road in enumerate(self.road_types):
-            raster_costs.append(RasterCost(road, x[i]))
+
+            # Cost can became <0 during optimization. Fix it (add penalty later)
+            r_cost = x[i] if x[i] >=0 else 0
+            if x[i] < 0:
+               self.logger.debug('Parameter %s is changed to %s' % (x[i], r_cost))
+
+            raster_costs.append(RasterCost(road, r_cost))
 
         walk_params = WalkingCostParams(self.wood_stocks, raster_costs)
 
         species_costs = []
         for i, spec in enumerate(self.wood_types):
-            param_number = len(self.road_types) + i * 4
+            # For complex model:
+            # param_number = len(self.road_types) + i * 4
+            # species_costs.append(
+                # SpecieCost(spec, x[param_number], x[param_number + 1], x[param_number + 2], x[param_number + 3])
+            # )
+
+            param_number = len(self.road_types) + i * 1
             species_costs.append(
-                SpecieCost(spec, x[param_number], x[param_number + 1], x[param_number + 2], x[param_number + 3])
+                SpecieCost(spec, x[param_number])
             )
 
         wood_params = WoodCostParams(species_costs, x[-3], x[-2])
@@ -138,7 +150,7 @@ class Optimizer:
         return (walk_params, wood_params, alpha)
 
     def _penalty(self, x):
-        # coefs must be finite numbers => sum of the coefs must be close to 1
+        # coefs must be finite numbers => sum of the coefs must be close to 1; it allows to avoid infinite coefs
         s = np.sum(x[:-1])  # the last param is parameter of logistic function, it can be >1
         barier1 = (1 - s)**2
 
@@ -154,6 +166,7 @@ class Optimizer:
         """
         # NB: format of x is strictly inherited from model. Change of the model must be followed by changen in x
 
+        # self.logger.debug('Calc loss function. X = %s' % (x, ))
         self.counter += 1
 
         walk_params, wood_params, alpha = self._from_flatten_params(x)
@@ -177,14 +190,18 @@ class Optimizer:
 
 
 if __name__ == "__main__":
+
+    import sys
+    LOGFILE = sys.argv[1]
+    CONFIGFILE = sys.argv[2]
+
     from ..grasslib.configurator import Params
     from ..grasslib.grasslib import GRASS
 
     from ..models.utils import temp_name
 
-    from ..defaults import DEFAULT_CONFIG_NAME
 
-    config_params = Params(DEFAULT_CONFIG_NAME)
+    config_params = Params(CONFIGFILE)
 
     grass_lib = config_params.grass_lib
     grass_exec = config_params.grass_exec
@@ -214,22 +231,20 @@ if __name__ == "__main__":
         cumulative_cost='cost'
     )
 
+
+    # Order is IMPORTANT!
     raster_costs = [
-        RasterCost('road_asfalt', 0.01),
-        RasterCost('road_background', 0.73),
-        RasterCost('road_good_grunt', 0.02),
-        RasterCost('road_grunt', 0.03),
-        RasterCost('road_land', 0.04),
-        RasterCost('road_other', 0.05),
-        RasterCost('road_trop', 0.06),
-        RasterCost('road_wood', 0.06),
+        RasterCost('roads_asfalt', 0.01),
+        RasterCost('roads_good_grunt', 0.02),
+        RasterCost('roads_bad_type', 0.03),
+        RasterCost('roads_background', 0.73),
     ]
     # walk_params = WalkingCostParams('wood_stocks', raster_costs)
     species_costs = [
-        SpecieCost('DUB', 15.0, 20, 15, 1),
-        SpecieCost('LIPA', 12.0, 20, 15, 1),
-        SpecieCost('KEDR', 14.0, 20, 15, 1),
-        SpecieCost('JASEN', 13.0, 20, 15, 1)
+       SpecieCost('DUB', 0.25),
+        SpecieCost('LIPA', 0.20),
+        SpecieCost('KEDR', 0.20),
+        SpecieCost('JASEN', 0.15)
     ]
 
     optimizer = Optimizer(
@@ -238,20 +253,13 @@ if __name__ == "__main__":
         [rc.RasterName for rc in raster_costs],
         [sp.label for sp in species_costs],
         walk_c, wood_c,
-        'test', 'value',
-        log_file='optimization.log'
+        'logg_train', 'value',
+        log_file=LOGFILE
     )
 
     # Flattened parameters of the model
-    coefs = [
-        8.45791301e-04,   2.24728895e-01,   2.11603596e-02,   2.51441633e-04,
-        2.34781179e-02,   1.73308130e-04,   8.31838798e-02,   5.48647125e-02,
-        8.71269229e-02,   1.84373033e-02,   8.87160497e-03,   1.28342936e-02,
-        1.64126625e-01,   1.42606851e-02,   7.43569837e-03,   1.18448534e-02,
-        8.54654753e-02,   9.07827481e-03,   9.69954540e-03,   7.16661189e-03,
-        1.11440642e-01,   3.57985966e-02,   3.29573588e-04,   4.92749897e-03,
-        1.53287855e-03,   8.44323326e-04,   3.03833434e-04
-    ]
+    coefs = [0.01090543, 0.02388155,  0.0298881,   0.01722648,  0.1914548, 0.23921634, 0.3370044, 0.12198398,  0.01604372,  0.01239415,  0.00364387]
+
 
     model_params = np.array(coefs)
     result = optimizer.optimize(model_params, nsteps=2000, nshows=1)
@@ -262,32 +270,4 @@ if __name__ == "__main__":
     prior = Prioretizer(grs, walk_c, wood_c)
     prior.calc_priorities('tmp_prior', params[0], params[1], alpha=params[2], overwrite=True)
     print 'Prior', prior.get_scores('tmp_prior', 'test', 'value')
-
-    """
-    walk_params = WalkingCostParams(stocks='wood_stocks',
-                       costs_list=[RasterCost(RasterName='road_asfalt', WalkingCost=0.00084579130100000002),
-                                   RasterCost(RasterName='road_background', WalkingCost=0.22472889500000001),
-                                   RasterCost(RasterName='road_good_grunt', WalkingCost=0.021160359600000001),
-                                   RasterCost(RasterName='road_grunt', WalkingCost=0.000251441633),
-                                   RasterCost(RasterName='road_land', WalkingCost=0.023478117900000001),
-                                   RasterCost(RasterName='road_other', WalkingCost=0.00017330813),
-                                   RasterCost(RasterName='road_trop', WalkingCost=0.083183879799999999),
-                                   RasterCost(RasterName='road_wood', WalkingCost=0.054864712500000003)]),
-    wood_params = WoodCostParams(woodcosts=[SpecieCost(label='DUB', wood_cost=0.087126922900000001, d_cost=0.018437303299999999,
-                                          h_cost=0.0088716049700000004, b_cost=0.012834293599999999),
-                               SpecieCost(label='LIPA', wood_cost=0.164126625, d_cost=0.0142606851,
-                                          h_cost=0.0074356983700000004, b_cost=0.011844853400000001),
-                               SpecieCost(label='KEDR', wood_cost=0.085465475299999996, d_cost=0.0090782748100000001,
-                                          h_cost=0.0096995454000000005, b_cost=0.0071666118899999997),
-                               SpecieCost(label='JASEN', wood_cost=0.11144064200000001, d_cost=0.035798596600000003,
-                                          h_cost=0.00032957358799999998, b_cost=0.0049274989700000002)],
-                    persp_factor=0.0015328785500000001, background_cost=0.00084432332600000001)
-    alpha = 0.00030383343399999999
-
-    prior = Prioretizer(grs, walk_c, wood_c)
-    prior.calc_priorities('tmp_prior', walk_params, wood_params, alpha=alpha, overwrite=True)
-    print prior.get_scores('tmp_prior', 'test', 'value')
-    """
-
-
 

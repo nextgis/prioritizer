@@ -3,7 +3,10 @@
 from collections import namedtuple
 
 
-SpecieCost = namedtuple('SpecieCost', 'label, wood_cost, d_cost, h_cost, b_cost')
+# This model is too complex
+# SpecieCost = namedtuple('SpecieCost', 'label, wood_cost, d_cost, h_cost, b_cost')
+# Use less parameters
+SpecieCost = namedtuple('SpecieCost', 'label, wood_cost')
 WoodCostParams = namedtuple('WoodCostParams', 'woodcosts, persp_factor, background_cost')
 
 
@@ -44,16 +47,25 @@ class WoodCost:
         # It should be faster and simple then raster calculations (less rasterisation)
 
         for wc in costs_list:
-            expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s) * (%(persp_fact)s*%(persp)s+1)" \
+            # This model is too complex:
+            # expression = "(%(count_col)s*%(wood_cost)s + %(bon_cost)s/%(bonitet)s + %(d_cost)s*%(diam)s + %(h_cost)s*%(h)s) * (%(persp_fact)s*%(persp)s+1)" \
+                # % dict(
+                    # count_col=self.forest_count_column,
+                    # wood_cost=wc.wood_cost,
+                    # bon_cost=wc.b_cost,
+                    # bonitet=self.bonitet_column,
+                    # diam=self.diameter_column,
+                    # d_cost=wc.d_cost,
+                    # h=self.height_column,
+                    # h_cost=wc.h_cost,
+                    # persp=self.perspective_column,
+                    # persp_fact=persp_factor,
+            # )
+ 
+            # Use less paramethers:
+            expression = "(%(wood_cost)s) * (%(persp_fact)s*%(persp)s+1)" \
                 % dict(
-                    count_col=self.forest_count_column,
                     wood_cost=wc.wood_cost,
-                    bon_cost=wc.b_cost,
-                    bonitet=self.bonitet_column,
-                    diam=self.diameter_column,
-                    d_cost=wc.d_cost,
-                    h=self.height_column,
-                    h_cost=wc.h_cost,
                     persp=self.perspective_column,
                     persp_fact=persp_factor,
             )
