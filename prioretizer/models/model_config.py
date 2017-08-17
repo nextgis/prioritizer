@@ -29,6 +29,7 @@ class ModelParams:
         # Относительная стоимость древесины (в порядке перечисления меток)
         wood_cost = self.config.get('WOOD', 'wood_cost')
         wood_labels = wood_labels.split(',')
+        self.wood_labels = wood_labels
         wood_cost = [float(wc) for wc in wood_cost.split(',')]
         if len(wood_cost) != len(wood_labels):
             raise ConfigError('Wood types and Wood costs parameters have different lengths')
@@ -41,10 +42,11 @@ class ModelParams:
         # Названия растровых слоев, описывающих дороги
         road_labels = self.config.get('TRANSPORT', 'road_labels')
         road_labels = road_labels.split(',')
+        self.road_labels = road_labels
         # Относительные стоимости движения
         road_costs = self.config.get('TRANSPORT', 'road_costs')
         road_costs = [float(rc) for rc in road_costs.split(',')]
-        if len(road_costs) != len(road_labels):
+        if len(road_costs) != len(self.road_labels):
             raise ConfigError('Road types and Road costs parameters have different lengths')
         self._road_costs = [RasterCost(l, c) for (l, c) in zip(road_labels, road_costs)]
         self.walking_cost_params = WalkingCostParams(self.stocks, self._road_costs)
@@ -54,5 +56,6 @@ class ModelParams:
 
     def get_wood_cost_model(self, grass, cumulative_cost_column):
         return WoodCost(grass, self.wood_name, self.wood_forest_type_column, self.wood_perspect_column, cumulative_cost_column)
+
 
 

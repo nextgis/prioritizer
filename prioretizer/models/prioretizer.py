@@ -14,6 +14,7 @@ from utils import temp_name
 
 BIG_NUMBER = 1048576.0   # = 1024**2
 
+
 class Prioretizer:
     def __init__(self, grass, walking_cost, wood_cost):
         self.grs = grass
@@ -112,11 +113,11 @@ class Optimizer:
         self.counter = 0
 
     def optimize(self, x0, nsteps=100, nshows=5):
-        x = x0
+        x = self.flatten_params(x0[0], x0[1], x0[2])
         for i in range(nshows):
             x = optimize.fmin(self._loss, x, maxiter=nsteps, ftol=1e-6)
 
-        return x
+        return self._from_flatten_params(x)
 
     def _from_flatten_params(self, x):
         assert len(x) == self.param_count
@@ -152,6 +153,14 @@ class Optimizer:
 
         return (walk_params, wood_params, alpha)
 
+    def flatten_params(self, walking_cost_params, wood_cost_params, alpha):
+        road_costs = [w.WalkingCost for w in walking_cost_params.costs_list]
+        species_costs = [s.wood_cost for s in wood_cost_params.woodcosts]
+        persp = wood_cost_params.persp_factor
+        bg_cost = wood_cost_params.background_cost
+
+        return road_costs + species_costs + [persp, bg_cost, alpha]
+
     def _penalty(self, x):
         # coefs must be finite numbers => sum of the coefs must be close to 1; it allows to avoid infinite coefs
         s = np.sum(x[:-1])  # the last param is parameter of logistic function, it can be >1
@@ -174,7 +183,7 @@ class Optimizer:
 
         walk_params, wood_params, alpha = self._from_flatten_params(x)
 
-        prior = Prioretizer(grs, walk_c, wood_c)
+        prior = Prioretizer(self.grs, self.walking_model, self.wood_model)
         priorities = temp_name('prior', uuid.uuid4().hex)
         try:
             prior.calc_priorities(priorities, walk_params, wood_params, alpha)
@@ -189,87 +198,3 @@ class Optimizer:
             self.logger.debug('scores = %s, counter = %s, params = %s' % (scores, self.counter, x))
 
         return result
-
-
-
-if __name__ == "__main__":
-
-    import sys
-    LOGFILE = sys.argv[1]
-    CONFIGFILE = sys.argv[2]
-
-    from ..grasslib.configurator import Params
-    from ..grasslib.grasslib import GRASS
-
-    from ..models.utils import temp_name
-
-
-    config_params = Params(CONFIGFILE)
-
-    grass_lib = config_params.grass_lib
-    grass_exec = config_params.grass_exec
-
-    location = config_params.location
-    dbase = config_params.grassdata
-
-    grs = GRASS(
-        gisexec=grass_exec,
-        gisbase=grass_lib,
-        grassdata=dbase,
-        location=location,
-        init_loc=True
-    )
-
-    walk_c = WalkingCost(grs)
-
-    wood_map = 'vud_all'
-    wood_c = WoodCost(
-        grs, wood_map,
-        forest_type_column='Mr1',
-        perspective_column='Psp1',
-        cumulative_cost='cost'
-    )
-
-    # Order is IMPORTANT!
-    raster_costs = [
-        RasterCost('roads_asfalt', 0.01),
-        RasterCost('roads_good_grunt', 0.02),
-        RasterCost('roads_bad_type', 0.03),
-        RasterCost('roads_background', 0.73),
-    ]
-    # walk_params = WalkingCostParams('wood_stocks', raster_costs)
-    species_costs = [
-       SpecieCost('DUB', 0.25),
-        SpecieCost('LIPA', 0.20),
-        SpecieCost('KEDR', 0.20),
-        SpecieCost('JASEN', 0.15)
-    ]
-
-    optimizer = Optimizer(
-        grs,
-        'wood_stocks',
-        [rc.RasterName for rc in raster_costs],
-        [sp.label for sp in species_costs],
-        walk_c, wood_c,
-        'logg_train', 'value',
-        log_file=LOGFILE
-    )
-
-    # Flattened parameters of the model
-    coefs = [0.01090543, 0.02388155,  0.0298881,   0.01722648,  0.1914548, 0.23921634, 0.3370044, 0.12198398,  0.01604372,  0.01239415,  0.00364387]
-
-
-    model_params = np.array(coefs)
-    try:
-        grs.grass.run_command('v.db.addcolumn', map=wood_map, columns="cost double")
-        result = optimizer.optimize(model_params, nsteps=2000, nshows=1)
-    finally:
-        grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns="cost")
-    print 'res', result
-    print 'Params', optimizer._from_flatten_params(result)
-
-    params = optimizer._from_flatten_params(result)
-    prior = Prioretizer(grs, walk_c, wood_c)
-    prior.calc_priorities('tmp_prior', params[0], params[1], alpha=params[2], overwrite=True)
-    print 'Prior', prior.get_scores('tmp_prior', 'test', 'value')
-
