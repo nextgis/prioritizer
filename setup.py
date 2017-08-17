@@ -1,13 +1,13 @@
 from setuptools import setup
 
 setup(name='prioretizer',
-      version='0.6.1',
+      version='1.0.0',
       description='Prioretization',
 
       url='https://github.com/nextgis/prioritizer',
 
       author='NextGIS',
-      author_email='',
+      author_email='dmitrykolesov@nextgis.com',
 
       license='GPLv2+',
 
@@ -15,8 +15,8 @@ setup(name='prioretizer',
 
       zip_safe=False,
 
-      test_suite = 'nose.collector',
-      tests_require = ['nose'],
+      test_suite='nose.collector',
+      tests_require=['nose'],
 
       scripts=[
           "bin/apply_model",
@@ -26,7 +26,6 @@ setup(name='prioretizer',
           "bin/import_layer",
           "bin/list_layer",
           "bin/train_model",
-          "bin/walking_cost",
-          "bin/wood_cost",
+          "bin/query_model"
       ]
 )
