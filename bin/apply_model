@@ -3,6 +3,8 @@
 
 import os
 import sys
+import uuid
+
 
 import argparse
 
@@ -15,7 +17,7 @@ from prioretizer.models.walking_cost import WalkingCost
 
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
-
+from prioretizer.models.utils import temp_name
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Apply model')
@@ -80,14 +82,15 @@ def main():
 
     model_params = ModelParams(model)
 
-
-    walk_c = WalkingCost(grs)
-
-    wood_map = model_params.wood_name
-    wood_c = model_params.get_wood_cost_model(grs, 'cost')
-    prioretizer = Prioretizer(grs, walk_c, wood_c)
     try:
-        grs.grass.run_command('v.db.addcolumn', map=wood_map, columns="cost double")
+        colname = temp_name('cost', uuid.uuid4().hex)
+        wood_map = model_params.wood_name
+        grs.grass.run_command('v.db.addcolumn', map=wood_map, columns="%s double" % (colname, ))
+
+        wood_c = model_params.get_wood_cost_model(grs, colname)
+        walk_c = WalkingCost(grs)
+
+        prioretizer = Prioretizer(grs, walk_c, wood_c)
         prioretizer.calc_priorities(
             result,
             model_params.walking_cost_params, model_params.wood_cost_params,
@@ -95,7 +98,7 @@ def main():
             overwrite=overwrite
         )
     finally:
-        grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns="cost")
+        grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns=colname)
 
 
 if __name__ == '__main__':
