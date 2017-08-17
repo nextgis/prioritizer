@@ -15,7 +15,7 @@ from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Apply model.')
+    parser = argparse.ArgumentParser(description='Query model in points.')
 
     parser.add_argument(
         '--config',
@@ -29,14 +29,14 @@ def parse_args():
         dest='model_raster',
         action='store',
         required=True,
-        help='Name of result raster.'
+        help='Name of raster to query.'
     )
     parser.add_argument(
         '--result',
         dest='result',
         action='store',
         default='-',
-        help='Name of result file to store model.'
+        help='Name of result file.'
     )
     parser.add_argument(
         '--lonlat',
