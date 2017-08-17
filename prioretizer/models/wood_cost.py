@@ -14,9 +14,8 @@ class WoodCost:
     def __init__(self,
                  grass,
                  mapname,
-                 forest_type_column, forest_count_column,
-                 diameter_column, height_column,
-                 perspective_column, bonitet_column,
+                 forest_type_column,
+                 perspective_column,
                  cumulative_cost
     ):
         """Create raster of walking cost using costs of particular rasters
@@ -29,11 +28,7 @@ class WoodCost:
         self.mapname = mapname
 
         self.forest_type_column = forest_type_column
-        self.forest_count_column = forest_count_column
-        self.diameter_column = diameter_column
-        self.height_column = height_column
         self.perspective_column = perspective_column
-        self.bonitet_column = bonitet_column
 
         self.cumulative_cost = cumulative_cost
 

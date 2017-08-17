@@ -226,14 +226,9 @@ if __name__ == "__main__":
     wood_c = WoodCost(
         grs, wood_map,
         forest_type_column='Mr1',
-        forest_count_column='Kf1',
-        diameter_column='D1',
-        height_column='H1',
         perspective_column='Psp1',
-        bonitet_column='bonitet',
         cumulative_cost='cost'
     )
-
 
     # Order is IMPORTANT!
     raster_costs = [
