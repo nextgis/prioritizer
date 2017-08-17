@@ -6,16 +6,19 @@ import sys
 
 import argparse
 
-import numpy as np
-
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
+
+from prioretizer.models.model_config import ModelParams
+from prioretizer.models.prioretizer import Prioretizer
+from prioretizer.models.walking_cost import WalkingCost
 
 from prioretizer.defaults import DEFAULT_CONFIG_NAME
 
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description='Create Database for logging ranging.')
+    parser = argparse.ArgumentParser(description='Apply model')
 
     parser.add_argument(
         '--config',
@@ -25,25 +28,18 @@ def parse_args():
         help='Config file (default: %s)' % (DEFAULT_CONFIG_NAME, )
     )
     parser.add_argument(
-        '--model_raster',
-        dest='model_raster',
+        '--model',
+        dest='model',
         action='store',
         required=True,
-        help='Name of result raster.'
+        help='Name model file.'
     )
     parser.add_argument(
-        '--result',
-        dest='result',
-        action='store',
-        default='-',
-        help='Name of result file to store model.'
-    )
-    parser.add_argument(
-        '--lonlat',
-        dest='lonlat',
+        '--result_raster',
+        dest='result_raster',
         action='store',
         required=True,
-        help='Name of file with coordinates.'
+        help='Name of result raster to store in DB.'
     )
     parser.add_argument(
         '--overwrite',
@@ -62,16 +58,8 @@ def main():
     args = vars(args)
 
     overwrite = args['overwrite']
-    result = args['result']
-    model_raster = args['model_raster']
-
-    coords = args['lonlat']
-    if coords == '-':
-        coords = sys.stdin
-
-    lonlat = np.loadtxt(coords, delimiter=',')
-    if len(lonlat.shape) != 2:
-        raise ValueError('Coordinates must be in X,Y format')
+    result = args['result_raster']
+    model = args['model']
 
     config = args['config']
     config_params = Params(config)
@@ -90,30 +78,24 @@ def main():
         init_loc=True
     )
 
-    if os.path.isfile(result) and not overwrite:
-        sys.exit("File %s exists. Use --overwrite flag or other filename." % (result, ))
+    model_params = ModelParams(model)
 
-    probas = []
-    for lon, lat in lonlat:
-        xy = grs.grass.read_command(
-            'm.proj', coordinates="%s,%s" % (lon, lat), separator=',', flags='i')
-        # delete z-coordinate
-        xy = xy.split(",")[:2]
-        xy = ','.join(xy)
 
-        p = grs.grass.read_command(
-            'r.what', map=model_raster, coordinates=xy)
-        # delete coordinates
-        p = p.split("|")[-1]
-        probas.append(p)
+    walk_c = WalkingCost(grs)
 
-    probas = ''.join(probas)
-
-    if result == '-':
-        print probas
-    else:
-        res_file = open(result, 'w')
-        res_file.write(probas)
+    wood_map = model_params.wood_name
+    wood_c = model_params.get_wood_cost_model(grs, 'cost')
+    prioretizer = Prioretizer(grs, walk_c, wood_c)
+    try:
+        grs.grass.run_command('v.db.addcolumn', map=wood_map, columns="cost double")
+        prioretizer.calc_priorities(
+            result,
+            model_params.walking_cost_params, model_params.wood_cost_params,
+            model_params.func_alpha,
+            overwrite=overwrite
+        )
+    finally:
+        grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns="cost")
 
 
 if __name__ == '__main__':
