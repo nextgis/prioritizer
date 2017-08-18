@@ -125,14 +125,6 @@ class Trainer:
 
         return result
 
-
-    def describe(self):
-        description = """
-        На данный момент обучение в явном виде отсутствует. Используется заглушка.
-        """
-
-        return description
-
 def main():
     args = parse_args()
     args = vars(args)
