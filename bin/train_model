@@ -5,8 +5,10 @@ import os
 import sys
 
 import argparse
+
 import uuid
 
+import copy
 
 from prioretizer.grasslib.configurator import Params
 from prioretizer.grasslib.grasslib import GRASS
@@ -138,6 +140,7 @@ def main():
     overwrite = args['overwrite']
     init_model_config = args['init_model']
     init_model_config = ModelParams(init_model_config)
+    init_model_config.load()
 
     train_points = args['train_points']
     class_column = args['class_column']
@@ -166,8 +169,11 @@ def main():
         init_loc=True
     )
     trainer = Trainer(grs, init_model_config)
-    params = trainer.train(train_points, class_column, steps, logfile=log)
-    print params
+    walk, wood, alpha = trainer.train(train_points, class_column, steps, logfile=log)
+    final_model = copy.copy(init_model_config)
+    final_model.update_params(walk, wood, alpha)
+    final_model.save(result)
+
 
 
 if __name__ == '__main__':

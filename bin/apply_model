@@ -62,6 +62,8 @@ def main():
     overwrite = args['overwrite']
     result = args['result_raster']
     model = args['model']
+    model_params = ModelParams(model)
+    model_params.load()
 
     config = args['config']
     config_params = Params(config)
@@ -79,8 +81,6 @@ def main():
         location=location,
         init_loc=True
     )
-
-    model_params = ModelParams(model)
 
     try:
         colname = temp_name('cost', uuid.uuid4().hex)
