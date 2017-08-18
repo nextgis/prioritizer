@@ -44,6 +44,12 @@ def parse_args():
         help='Name of result raster to store in DB.'
     )
     parser.add_argument(
+        '--export_raster',
+        dest='export_raster',
+        action='store',
+        help='Name of result raster to store in DB.'
+    )
+    parser.add_argument(
         '--overwrite',
         dest='overwrite',
         action='store_const',
@@ -64,6 +70,10 @@ def main():
     model = args['model']
     model_params = ModelParams(model)
     model_params.load()
+
+    export_raster = args['export_raster']
+    if (export_raster is not None) and os.path.isfile(export_raster) and not overwrite:
+        sys.exit("File %s exists. Use --overwrite flag or other filename." % (export_raster, ))
 
     config = args['config']
     config_params = Params(config)
@@ -99,6 +109,9 @@ def main():
         )
     finally:
         grs.grass.run_command('v.db.dropcolumn', map=wood_map, columns=colname)
+
+    if export_raster is not None:
+        grs.grass.run_command('r.out.gdal', input=result, out=export_raster, createopt="COMPRESS=DEFLATE", overwrite=True)
 
 
 if __name__ == '__main__':
