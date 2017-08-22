@@ -52,6 +52,7 @@ class Prioretizer:
         """
         rast_column = temp_name('cost', uuid.uuid4().hex)
         try:
+            self.grs.grass.run_command('v.db.addcolumn', map=points, columns="%s double" % (rast_column, ))
             self.grs.grass.run_command('v.what.rast', map=points, raster=priorities, column=rast_column, quiet=True)
             # The simplest form of proximity: dot product
             # NB: priorities raster contains values in (0, 1), so zeros don't influence the scores =>
