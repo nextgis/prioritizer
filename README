@@ -16,7 +16,6 @@ Install packages:
 ```
 sudo pip install numpy
 sudo pip install scipy
-sudo pip install sklearn
 ```
 
 
@@ -93,24 +92,40 @@ optional arguments:
 
 Workflow example:
 =================
+Full workflow is provided in https://drive.google.com/open?id=1N78pHLu40l8lN1LUKEoKs--q-4py_TyPNE9Bie1dpGA This file contains short example
 
 ```
 # Setup enviromental variable
-export LD_LIBRARY_PATH=/usr/lib/grass70/lib
+GRASSLIB="$(grass --config path)/lib"
+export LD_LIBRARY_PATH=${GRASSLIB}
+export GISBASE="$(grass --config path)
+
 
 # Create new database
+# init: create config file (see provided examples)
 create_db
 
 # Import data
-import_layer --input=road_dist.tif --output=road_dist
-import_layer --input=vydela_dist.tif --output=vydela_dist
-import_layer --input=logg_comb.tif --output=logg_comb
+import_layer --input=roads_asfalt.tif --out=roads_asfalt
+import_layer --input=roads_good_grunt.tif --out=roads_good_grunt
+import_layer --input=roads_bad_type.tif --out=roads_bad_type
+import_layer --input=roads_background.tif --out=roads_background
+
+import_layer --input=vud_all.geojson --out=vud_all
+import_layer --input=wood_stocks.tif --out=wood_stocks
+
 
 # Train model
-train_model --x=road_dist,vydela_dist --y=logg_comb --result=my.model.pkl
+# init: create config file (see provided examples)
+train_model --init_model=init_model.conf --train_points=logg_train --class_column=value --result=trained_model.conf --steps=3000
+
+
+# Create raster of priorities
+apply_model --model=trained_model.conf --result_raster=priorities --export_raster=priorities.tif
+
 
 # Print result
-apply_model --data=tmp.txt --model=my.model.pkl
+query_model --model_raster=priorities --result=- --lonlat=data
 ```
 
 
